@@ -1,0 +1,2 @@
+[KAUtils]
+backend = "CUDA" # Available options: CPU, ROC, CUDA.

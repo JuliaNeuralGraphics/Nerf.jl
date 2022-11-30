@@ -1,0 +1,103 @@
+function photometric_loss(
+    rgba::R; bundle::RayBundle, samples::RaySamples, images::Images,
+    n_rays::Int, rng_state::UInt64,
+) where R <: AbstractMatrix{Float32}
+    dev = device_from_type(R)
+    loss = similar(dev, Float32, (length(bundle),))
+    ∇rgba = zeros(dev, Float32, size(rgba))
+    wait(photometric_loss!(dev)(
+        reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
+        rgba, bundle.thread_indices, rng_state, bundle.image_indices,
+        bundle.span, samples.deltas, images, UInt32(n_rays);
+        ndrange=length(bundle)))
+    # TODO accumulate loss in the kernel?
+    sum(loss), ∇rgba
+end
+
+function ChainRulesCore.rrule(
+    ::typeof(photometric_loss), rgba::R; bundle::RayBundle,
+    samples::RaySamples, images::Images, n_rays::Int, rng_state::UInt64,
+) where R <: AbstractMatrix{Float32}
+    loss, ∇rgba = photometric_loss(
+        rgba; bundle, samples, images, n_rays, rng_state)
+    function photometric_loss_pullback(_)
+        NoTangent(), ∇rgba
+    end
+    loss, photometric_loss_pullback
+end
+
+@kernel function photometric_loss!(
+    ∇rgba::M, loss::D, rgba::R,
+    thread_indices::I, rng_state::UInt64, image_indices::I,
+    span::S, deltas::D, images::Images, n_rays::UInt32,
+) where {
+    M <: AbstractVector{SVector{4, Float32}},
+    R <: AbstractMatrix{Float32},
+    I <: AbstractVector{UInt32},
+    S <: AbstractVector{SVector{3, UInt32}},
+    D <: AbstractVector{Float32},
+}
+    @uniform scale::Float32 = 1f0 / n_rays
+
+    i::UInt32 = @index(Global)
+    idx = thread_indices[i]
+
+    # Same as in sampler:
+    # 3 random numbers per ray: 2 for pixel, 1 for time offset.
+    rng_state = advance(rng_state, (idx - 0x1) * 0x3)
+    xy, rng_state = random_vec2f0(rng_state)
+
+    image_idx = image_indices[i]
+    ray_span = span[i]
+    offset, steps = ray_span[1], ray_span[2]
+    @assert steps > 0x0
+
+    composed_rgb, composed_steps = alpha_compose!(nothing, rgba, offset, steps, deltas)
+    target_rgb = sample(images, xy, image_idx)
+
+    diff = composed_rgb .- target_rgb
+    ∇loss = 2f0 .* diff
+    loss[i] = mean(abs2, diff) * scale
+
+    @inline function consumer(
+        rgb::SVector{3, Float32}, hcomposed_rgb::MVector{3, Float32},
+        ω::Float32, δt::Float32, σ::Float32, T::Float32, write_idx::UInt32,
+    )
+        rgb_diff = composed_rgb .- hcomposed_rgb
+        ∇rgb = ω .* ∇loss .* ∇sigmoid(rgb) .* scale
+        ∇σ = σ * δt * (∇loss ⋅ (T .* rgb .- rgb_diff)) * scale
+        ∇rgba[write_idx] = SVector{4, Float32}(∇rgb[1], ∇rgb[2], ∇rgb[3], ∇σ)
+    end
+    alpha_compose!(consumer, rgba, offset, composed_steps, deltas)
+end
+
+@inline ∇sigmoid(v::SVector{3, Float32}) = v .* (1f0 .- v)
+
+@inline function alpha_compose!(
+    consumer, rgba::R, offset::UInt32, steps::UInt32, deltas::D,
+) where {
+    R <: AbstractMatrix{Float32}, D <: AbstractVector{Float32},
+}
+    composed_rgb = zeros(MVector{3, Float32})
+    T, ϵ = 1f0, 1f-4
+    step = zero(UInt32)
+    while step < steps
+        T < ϵ && break
+        step += 0x1
+        read_idx = offset + step
+
+        rgb, log_σ = to_rgb_a(@view(rgba[:, read_idx]))
+        σ = exp(log_σ)
+        δ = deltas[read_idx]
+
+        α = 1f0 - exp(-σ * δ)
+        ω = α * T
+        T *= 1f0 - α
+
+        composed_rgb .+= ω .* rgb
+        isnothing(consumer) || consumer(rgb, composed_rgb, ω, δ, σ, T, read_idx)
+    end
+    composed_rgb, step
+end
+
+@inline to_rgb_a(x) = SVector{3, Float32}(x[1], x[2], x[3]), x[4]
