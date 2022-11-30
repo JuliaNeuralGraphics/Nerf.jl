@@ -1,0 +1,2 @@
+[KAUtils]
+backend = "ROC" # Available options: CPU, ROC, CUDA.
