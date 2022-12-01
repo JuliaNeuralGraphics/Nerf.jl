@@ -31,7 +31,7 @@ end
     ge = GridEncoding(DEVICE; n_dims=3)
     θ = Nerf.init(ge)
 
-    n = 256
+    n = 16
     x = rand(DEVICE, Float32, (3, n))
 
     ∇ = Zygote.gradient(θ) do θ

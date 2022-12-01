@@ -1,6 +1,6 @@
 module Nerf
 
-export GridEncoding
+export GridEncoding, spherical_harmonics
 
 using Adapt
 using ChainRulesCore
@@ -80,6 +80,8 @@ include("ray.jl")
 include("acceleration/occupancy.jl")
 include("sampler.jl")
 include("encoding/grid.jl")
+include("encoding/spherical_harmonics.jl")
+include("nn/nn.jl")
 
 @info "Backend: $BACKEND"
 @info "Device: $DEVICE"
