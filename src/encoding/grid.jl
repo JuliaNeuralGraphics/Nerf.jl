@@ -63,8 +63,8 @@ function reset!(::GridEncoding, θ)
     copy!(θ, rand(Float32, size(θ)) .* 2f-4 .- 1f-4)
 end
 
-@inline function get_output_shape(ge::GridEncoding)
-    Int64.((ge.n_features, ge.n_levels))
+function get_output_shape(ge::GridEncoding)
+    Int.((ge.n_features, ge.n_levels))
 end
 
 function (ge::GridEncoding)(x, θ)

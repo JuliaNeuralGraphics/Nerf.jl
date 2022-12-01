@@ -82,6 +82,7 @@ include("sampler.jl")
 include("encoding/grid.jl")
 include("encoding/spherical_harmonics.jl")
 include("nn/nn.jl")
+include("models/basic.jl")
 
 @info "Backend: $BACKEND"
 @info "Device: $DEVICE"
@@ -113,6 +114,23 @@ function main()
     @show Int(bundle.n_samples)
     samples = materialize(bundle, occupancy, cone, bbox, dataset.translations)
     @show Array(samples.deltas)[1:10]
+
+    nothing
+end
+
+function main2()
+    dev = DEVICE
+    field = BasicField(dev)
+    θ = init(field)
+
+    n = 16
+    points = rand(dev, Float32, (3, n))
+    directions = rand(dev, Float32, (3, n))
+    y = field(points, directions, θ)
+    @show size(y)
+
+    density(field, points, θ)
+    batched_density(field, points, θ; batch=4)
 
     nothing
 end
