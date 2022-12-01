@@ -1,6 +1,9 @@
 module Nerf
 
+export GridEncoding
+
 using Adapt
+using ChainRulesCore
 using FileIO
 using ImageCore
 using ImageTransformations
@@ -76,6 +79,7 @@ include("data/dataset.jl")
 include("ray.jl")
 include("acceleration/occupancy.jl")
 include("sampler.jl")
+include("encoding/grid.jl")
 
 @info "Backend: $BACKEND"
 @info "Device: $DEVICE"
