@@ -14,7 +14,7 @@ function BasicField(dev; backbone_size::Int = 16, grid_kwargs...)
     color_mlp = Chain(
         Dense(color_mlp_input => 64, relu),
         Dense(64 => 64, relu),
-        Dense(64 => 3))
+        Dense(64 => 3, sigmoid))
     BasicField(ge, density_mlp, color_mlp)
 end
 
@@ -64,7 +64,7 @@ function density(b::BasicField, points, θ; mode = Val{:NOIG}())
     b.density_mlp(encoded_points, θ.θdensity)[1, :]
 end
 
-function batched_density(b::BasicField, points, θ; batch::Int, mode = Val{:NOIG}())
+function batched_density(b::BasicField, points, θ; batch::Int)
     n = size(points, 2)
     n_iterations = ceil(Int, n / batch)
 
@@ -72,7 +72,45 @@ function batched_density(b::BasicField, points, θ; batch::Int, mode = Val{:NOIG
     for i in 1:n_iterations
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
-        σ[i_start:i_end] .= density(b, @view(points[:, i_start:i_end]), θ; mode)
+        σ[i_start:i_end] .= density(b, @view(points[:, i_start:i_end]), θ)
     end
     σ
 end
+
+struct BasicModel{F, P}
+    field::F
+    θ::P
+    optimizer::Adam
+end
+
+function BasicModel(field::BasicField)
+    θ = init(field)
+    BasicModel(field, θ, Adam(get_device(field), θ))
+end
+
+get_device(m::BasicModel) = get_device(m.field)
+
+function batched_density(m::BasicModel, points; batch::Int)
+    batched_density(m.field, points, m.θ; batch)
+end
+
+function reset!(m::BasicModel)
+    reset!(m.field, m.θ)
+    reset!(m.optimizer)
+end
+
+function (m::BasicModel)(points, directions)
+    m.field(points, directions, m.θ)
+end
+
+function ∇normals(m::BasicModel, points)
+    Y, back = Zygote.pullback(points) do p
+        density(m.field, p, m.θ; mode=Val{:IG}())
+    end
+    ∇ = back(ones(get_device(m), Float32, size(Y)))[1]
+    safe_normalize(-∇; dims=1)
+end
+
+# TODO
+# function step!(m::BasicModel, points, directions)
+# end

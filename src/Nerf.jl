@@ -14,6 +14,7 @@ using KernelAbstractions: @atomic
 using LinearAlgebra
 using StaticArrays
 using Statistics
+using Zygote
 
 const BACKEND = KAUtils.BACKEND
 const DEVICE = KAUtils.DEVICE
@@ -120,17 +121,17 @@ end
 
 function main2()
     dev = DEVICE
-    field = BasicField(dev)
-    θ = init(field)
+    model = BasicModel(BasicField(dev))
 
     n = 16
     points = rand(dev, Float32, (3, n))
     directions = rand(dev, Float32, (3, n))
-    y = field(points, directions, θ)
+    y = model(points, directions)
     @show size(y)
 
-    density(field, points, θ)
-    batched_density(field, points, θ; batch=4)
+    batched_density(model, points; batch=4)
+
+    ∇normals(model, points)
 
     nothing
 end
