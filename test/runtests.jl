@@ -1,4 +1,5 @@
 using KAUtils
+using LinearAlgebra
 using Nerf
 using StaticArrays
 using Test
@@ -8,6 +9,12 @@ const DEVICE = Nerf.DEVICE
 @info "Testing on device: $DEVICE"
 
 @testset "Nerf" begin
+    @testset "BBox" begin
+        include("bbox.jl")
+    end
+    @testset "Utils" begin
+        include("utils.jl")
+    end
     @testset "Grid encoding" begin
         include("grid_encoding.jl")
     end

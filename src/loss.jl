@@ -59,8 +59,7 @@ end
 @inline function alpha_compose!(
     consumer, rgba::R, offset::UInt32, steps::UInt32, deltas::D,
 ) where {
-    R <: AbstractMatrix{Float32},
-    D <: AbstractVector{Float32},
+    R <: AbstractMatrix{Float32}, D <: AbstractVector{Float32},
 }
     composed_rgb = zeros(MVector{3, Float32})
     T, ϵ = 1f0, 1f-4

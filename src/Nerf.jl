@@ -1,6 +1,7 @@
 module Nerf
 
 export GridEncoding, spherical_harmonics
+export BBox, Ray
 
 using Adapt
 using ChainRulesCore

@@ -5,7 +5,7 @@ Base.@kwdef mutable struct Adam{D, T}
     current_step::UInt32 = UInt32(0)
 
     # Hyperparameters.
-    lr::Float32 = 1f-3
+    lr::Float32 = 1f-2
     β1::Float32 = 0.9f0
     β2::Float32 = 0.999f0
     ϵ::Float32 = 1f-8

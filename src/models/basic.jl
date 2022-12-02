@@ -88,7 +88,7 @@ end
 
 function BasicModel(field::BasicField)
     θ = init(field)
-    BasicModel(field, θ, Adam(get_device(field), θ))
+    BasicModel(field, θ, Adam(get_device(field), θ; lr=1f-2))
 end
 
 get_device(m::BasicModel) = get_device(m.field)

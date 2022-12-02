@@ -221,7 +221,7 @@ end
     level_resolution::UInt32,
 )::Float32
     p = point .* level_resolution
-    t = floor.(p .+ 0.5f0 .+ 0.5f0 .* sign.(direction) .- p) ./ direction
+    t = (floor.(0.5f0 .+ p .+ 0.5f0 .* sign.(direction)) .- p) ./ direction
     max(0f0, minimum(t) / level_resolution)
 end
 
