@@ -89,9 +89,8 @@ function Dataset(
     else
         device_rotations = to_device(dev, rotations)
         device_translations = to_device(dev, translations)
-        device_images = adapt(type_from_device, images)
+        device_images = adapt(type_from_device(dev), images)
     end
-
     Dataset(
         device_images, device_rotations, device_translations, intrinsics,
         frame_filenames, rotations, translations, scale, offset, bbox_scale)

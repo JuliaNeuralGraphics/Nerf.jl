@@ -84,6 +84,7 @@ include("encoding/grid.jl")
 include("encoding/spherical_harmonics.jl")
 include("nn/nn.jl")
 include("models/basic.jl")
+include("loss.jl")
 
 @info "Backend: $BACKEND"
 @info "Device: $DEVICE"
@@ -99,7 +100,6 @@ function main()
         angle=get_cone_angle(dataset), steps=1024,
         resolution=get_resolution(occupancy),
         n_levels=get_n_levels(occupancy))
-    @show cone
 
     mark_invisible_regions!(
         occupancy; intrinsics=dataset.intrinsics,
@@ -112,26 +112,16 @@ function main()
     bundle = RayBundle(
         occupancy, cone, bbox, dataset.rotations,
         dataset.translations, dataset.intrinsics; n_rays=1 << 10)
-    @show Int(bundle.n_samples)
+    @show length(bundle)
     samples = materialize(bundle, occupancy, cone, bbox, dataset.translations)
-    @show Array(samples.deltas)[1:10]
+    @show length(samples)
 
-    nothing
-end
-
-function main2()
-    dev = DEVICE
+    raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
+    raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
     model = BasicModel(BasicField(dev))
+    rgba = model(raw_points, raw_directions)
 
-    n = 16
-    points = rand(dev, Float32, (3, n))
-    directions = rand(dev, Float32, (3, n))
-    y = model(points, directions)
-    @show size(y)
-
-    batched_density(model, points; batch=4)
-
-    ∇normals(model, points)
+    photometric_loss(rgba, bundle, samples, dataset.images)
 
     nothing
 end
