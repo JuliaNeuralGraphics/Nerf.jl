@@ -1,5 +1,5 @@
 function photometric_loss(
-    rgba::R, bundle::RayBundle, samples::RaySamples, images::Images,
+    rgba::R; bundle::RayBundle, samples::RaySamples, images::Images,
 ) where R <: AbstractMatrix{Float32}
     dev = device_from_type(R)
     loss = similar(dev, Float32, (length(bundle),))
@@ -8,7 +8,16 @@ function photometric_loss(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.Ξ, bundle.image_indices,
         bundle.span, samples.deltas, images; ndrange=length(bundle)))
-    loss, ∇rgba
+    sum(loss), ∇rgba
+end
+
+function ChainRulesCore.rrule(
+    ::typeof(photometric_loss), rgba::R; bundle::RayBundle,
+    samples::RaySamples, images::Images,
+) where R <: AbstractMatrix{Float32}
+    loss, ∇rgba = photometric_loss(rgba; bundle, samples, images)
+    photometric_loss_pullback(_) = NoTangent(), ∇rgba
+    loss, photometric_loss_pullback
 end
 
 @kernel function photometric_loss!(

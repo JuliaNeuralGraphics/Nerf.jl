@@ -79,12 +79,13 @@ include("bbox.jl")
 include("data/dataset.jl")
 include("ray.jl")
 include("acceleration/occupancy.jl")
-include("sampler.jl")
 include("encoding/grid.jl")
 include("encoding/spherical_harmonics.jl")
 include("nn/nn.jl")
-include("models/basic.jl")
+include("sampler.jl")
 include("loss.jl")
+include("trainer.jl")
+include("models/basic.jl")
 
 @info "Backend: $BACKEND"
 @info "Device: $DEVICE"
@@ -94,34 +95,14 @@ function main()
 
     config_file = "/home/pxl-th/code/INGP.jl/data/raccoon_sofa2/transforms.json"
     dataset = Dataset(dev; config_file)
-    bbox = get_bbox(dataset)
-    occupancy = OccupancyGrid(dev; n_levels=get_n_levels(dataset))
-    cone = Cone(;
-        angle=get_cone_angle(dataset), steps=1024,
-        resolution=get_resolution(occupancy),
-        n_levels=get_n_levels(occupancy))
-
-    mark_invisible_regions!(
-        occupancy; intrinsics=dataset.intrinsics,
-        rotations=dataset.rotations, translations=dataset.translations)
-
-    update!(occupancy; bbox, step=1) do points, indices
-        ones(dev, Float32, (length(indices),))
-    end
-
-    bundle = RayBundle(
-        occupancy, cone, bbox, dataset.rotations,
-        dataset.translations, dataset.intrinsics; n_rays=1 << 10)
-    @show length(bundle)
-    samples = materialize(bundle, occupancy, cone, bbox, dataset.translations)
-    @show length(samples)
-
-    raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
-    raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
     model = BasicModel(BasicField(dev))
-    rgba = model(raw_points, raw_directions)
-
-    photometric_loss(rgba, bundle, samples, dataset.images)
+    trainer = Trainer(model, dataset)
+    for i in 1:1000
+        l = step!(trainer)
+        if i % 10 == 0
+            @show i, l
+        end
+    end
 
     nothing
 end

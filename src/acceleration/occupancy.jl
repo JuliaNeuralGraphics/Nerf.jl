@@ -68,7 +68,8 @@ function update!(
             oc.density, bbox, threshold, UInt32(step); ndrange=n_non_uniform))
     end
 
-    log_densities = density_eval_fn(points, indices)
+    raw_points = reshape(reinterpret(Float32, points), 3, :)
+    log_densities = density_eval_fn(raw_points)
 
     tmp_density = zeros(dev, Float32, size(oc.density))
     wait(distribute_density!(dev)(

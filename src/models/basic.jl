@@ -40,8 +40,11 @@ function _check_mode(mode)
         "`mode`=`$mode` must be either `Val{:NOIG}()` or `Val{:IG}()`."))
 end
 
-function (b::BasicField)(points, directions, θ; mode = Val{:NOIG}())
-    # TODO check input dims
+function (b::BasicField)(
+    points::P, directions::D, θ; mode = Val{:NOIG}(),
+) where {
+    P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
+}
     _check_mode(mode)
     if mode == Val{:NOIG}()
         encoded_points = b.grid_encoding(points, θ.θge)
@@ -54,7 +57,7 @@ function (b::BasicField)(points, directions, θ; mode = Val{:NOIG}())
     vcat(rgb, backbone[[1], :])
 end
 
-function density(b::BasicField, points, θ; mode = Val{:NOIG}())
+function density(b::BasicField, points::P, θ; mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
     _check_mode(mode)
     if mode == Val{:NOIG}()
         encoded_points = b.grid_encoding(points, θ.θge)
@@ -64,7 +67,7 @@ function density(b::BasicField, points, θ; mode = Val{:NOIG}())
     b.density_mlp(encoded_points, θ.θdensity)[1, :]
 end
 
-function batched_density(b::BasicField, points, θ; batch::Int)
+function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: AbstractMatrix{Float32}
     n = size(points, 2)
     n_iterations = ceil(Int, n / batch)
 
@@ -90,7 +93,7 @@ end
 
 get_device(m::BasicModel) = get_device(m.field)
 
-function batched_density(m::BasicModel, points; batch::Int)
+function batched_density(m::BasicModel, points::P; batch::Int) where P <: AbstractMatrix
     batched_density(m.field, points, m.θ; batch)
 end
 
@@ -99,11 +102,13 @@ function reset!(m::BasicModel)
     reset!(m.optimizer)
 end
 
-function (m::BasicModel)(points, directions)
+function (m::BasicModel)(points::P, directions::D) where {
+    P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
+}
     m.field(points, directions, m.θ)
 end
 
-function ∇normals(m::BasicModel, points)
+function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     Y, back = Zygote.pullback(points) do p
         density(m.field, p, m.θ; mode=Val{:IG}())
     end
@@ -111,6 +116,19 @@ function ∇normals(m::BasicModel, points)
     safe_normalize(-∇; dims=1)
 end
 
-# TODO
-# function step!(m::BasicModel, points, directions)
-# end
+function step!(
+    m::BasicModel, points::P, directions::D;
+    bundle::RayBundle, samples::RaySamples, images::Images,
+) where {
+    P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
+}
+    l = 0f0
+    ∇ = Zygote.gradient(m.θ) do θ
+        rgba = m.field(points, directions, θ)
+        loss = photometric_loss(rgba; bundle, samples, images)
+        l = loss
+        loss
+    end
+    step!(m.optimizer, m.θ, ∇[1])
+    l
+end
