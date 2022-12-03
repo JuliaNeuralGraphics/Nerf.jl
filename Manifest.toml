@@ -5,8 +5,10 @@ manifest_format = "2.0"
 project_hash = "a4667458faa0a83f3bb4ccbba5d02f5eb69aca7a"
 
 [[deps.AMDGPU]]
-deps = ["AbstractFFTs", "Adapt", "BinaryProvider", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "HIP_jll", "LLD_jll", "LLVM", "LLVM_jll", "Libdl", "LinearAlgebra", "MIOpen_jll", "MacroTools", "MsgPack", "ObjectFile", "Pkg", "Preferences", "Printf", "ROCmClangOCL_jll", "ROCmDeviceLibs_jll", "Random", "Requires", "Setfield", "SpecialFunctions", "Statistics", "TimespanLogging", "hsa_rocr_jll", "rocBLAS_jll", "rocRAND_jll", "rocSPARSE_jll"]
-path = "/home/pxl-th/.julia/dev/AMDGPU"
+deps = ["AbstractFFTs", "Adapt", "BinaryProvider", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "HIP_jll", "LLD_jll", "LLVM", "LLVM_jll", "Libdl", "LinearAlgebra", "MacroTools", "Pkg", "Preferences", "Printf", "ROCmDeviceLibs_jll", "Random", "Requires", "Setfield", "SpecialFunctions", "Statistics", "hsa_rocr_jll", "rocBLAS_jll", "rocRAND_jll", "rocSPARSE_jll"]
+git-tree-sha1 = "f3a80563258d087b8269298eeab013b3f955e3c5"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaGPU/AMDGPU.jl.git"
 uuid = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 version = "0.4.4"
 
@@ -225,9 +227,9 @@ version = "0.8.4"
 
 [[deps.ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "10fa12fe96e4d76acfa738f4df2126589a67374f"
+git-tree-sha1 = "187198a4ed8ccd7b5d99c41b69c679269ea2b2d4"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.10.33"
+version = "0.10.32"
 
 [[deps.Future]]
 deps = ["Random"]
@@ -247,7 +249,7 @@ version = "0.1.2"
 
 [[deps.GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "4f578a0972a4f6b7a4c450650b1d2582b9dcff97"
+git-tree-sha1 = "c056927f70bc6bb7162ffd9fc3aeeb8626ce0962"
 repo-rev = "vc/always_inline"
 repo-url = "https://github.com/JuliaGPU/GPUCompiler.jl.git"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
@@ -384,9 +386,9 @@ version = "14.0.5+3"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "e7e9184b0bf0158ac4e4aa9daf00041b5909bf1a"
+git-tree-sha1 = "088dd02b2797f0233d92583562ab669de8517fd1"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "4.14.0"
+version = "4.14.1"
 
 [[deps.LLVMExtra_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg", "TOML"]
@@ -475,12 +477,6 @@ git-tree-sha1 = "dedbebe234e06e1ddad435f5c6f4b85cd8ce55f7"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
 version = "2.2.2"
 
-[[deps.MIOpen_jll]]
-deps = ["Artifacts", "HIP_jll", "JLLWrappers", "Libdl", "Pkg", "ROCmClangOCL_jll", "SQLite_jll", "Zlib_jll", "boost_jll", "rocBLAS_jll"]
-path = "../../.julia/dev/MIOpen_jll"
-uuid = "2409bb75-d5ef-542a-ac68-1cfd4c37dc24"
-version = "5.2.3+3"
-
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
 git-tree-sha1 = "42324d08725e200c23d4dfb549e0d5d89dede2d2"
@@ -514,12 +510,6 @@ version = "0.3.4"
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 version = "2022.10.11"
 
-[[deps.MsgPack]]
-deps = ["Serialization"]
-git-tree-sha1 = "a8cbf066b54d793b9a48c5daa5d586cf2b5bd43d"
-uuid = "99f44e22-a591-53d1-9472-aa23ef4bd671"
-version = "1.1.0"
-
 [[deps.NUMA_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "3da12251003f08e819c907c645879c362206f5b4"
@@ -535,12 +525,6 @@ version = "1.0.1"
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
-
-[[deps.ObjectFile]]
-deps = ["Reexport", "StructIO"]
-git-tree-sha1 = "55ce61d43409b1fb0279d1781bf3b0f22c83ab3b"
-uuid = "d8793406-e978-5875-9003-1fc021f44a92"
-version = "0.3.7"
 
 [[deps.OffsetArrays]]
 deps = ["Adapt"]
@@ -596,10 +580,6 @@ version = "1.3.0"
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
-[[deps.Profile]]
-deps = ["Printf"]
-uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
-
 [[deps.Quaternions]]
 deps = ["LinearAlgebra", "Random"]
 git-tree-sha1 = "fcebf40de9a04c58da5073ec09c1c1e95944c79b"
@@ -615,12 +595,6 @@ deps = ["AMDGPU", "Adapt", "KernelAbstractions", "StaticArrays", "UnsafeAtomicsL
 path = "/home/pxl-th/.julia/dev/KernelAbstractions/lib/ROCKernels"
 uuid = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
 version = "0.3.2"
-
-[[deps.ROCmClangOCL_jll]]
-deps = ["Artifacts", "HIP_jll", "JLLWrappers", "Libdl", "Pkg", "ROCmDeviceLibs_jll"]
-path = "../../.julia/dev/ROCmClangOCL_jll"
-uuid = "16a3744c-50b6-5bb7-8742-88eaa43908b7"
-version = "5.2.3+0"
 
 [[deps.ROCmCompilerSupport_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "ROCmDeviceLibs_jll", "hsa_rocr_jll"]
@@ -695,12 +669,6 @@ version = "1.3.3"
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
 
-[[deps.SQLite_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "b89fe49b6a19cde7aefa7e7cf013c1160367f37d"
-uuid = "76ed43ae-9a5d-5a62-8c75-30186b810ce8"
-version = "3.40.0+0"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -760,12 +728,6 @@ git-tree-sha1 = "13237798b407150a6d2e2bce5d793d7d9576e99e"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 version = "0.6.13"
 
-[[deps.StructIO]]
-deps = ["Test"]
-git-tree-sha1 = "010dc73c7146869c042b49adcdb6bf528c12e859"
-uuid = "53d494c1-5632-5724-8f4c-31dff12d585f"
-version = "0.3.0"
-
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
@@ -808,12 +770,6 @@ deps = ["ExprTools", "Printf"]
 git-tree-sha1 = "f2fd3f288dfc6f507b0c3a2eb3bac009251e548b"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 version = "0.5.22"
-
-[[deps.TimespanLogging]]
-deps = ["Distributed", "Profile"]
-git-tree-sha1 = "51be7dd35b0c8a5a613dc7af272d587ea6943d24"
-uuid = "a526e669-04d3-4846-9525-c66122c55f63"
-version = "0.1.0"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
@@ -939,12 +895,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "feaf9f6293003c2bf53056fd6930d677ed340b34"
 uuid = "c53206cc-00f7-50bf-ad1e-3ae1f6e49bc3"
 version = "1.3.1+0"
-
-[[deps.boost_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "72f8f9628f7f008e2616fe4c32ceb96bc82da733"
-uuid = "28df3c45-c428-5900-9ff8-a3135698ca75"
-version = "1.79.0+0"
 
 [[deps.fts_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]

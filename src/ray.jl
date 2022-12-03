@@ -7,7 +7,7 @@
         (xy .- intrinsics.principal) .*
         intrinsics.resolution ./ intrinsics.focal
     D && (xy = undistort(xy, intrinsics.distortion);)
-    # TODO make direction -1f0 at Z, then we can get rid of nerf-to-ngp
+    # TODO make direction -1f0 at Z?
     direction = normalize(rotation * SVector{3, Float32}(xy[1], xy[2], 1f0))
     Ray(origin, direction)
 end

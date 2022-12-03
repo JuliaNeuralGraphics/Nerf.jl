@@ -123,7 +123,18 @@ function get_n_levels(d::Dataset)
 end
 
 # Training bbox.
-function get_bbox(d::Dataset)
+function get_bbox(d::Dataset, n_levels::Int)
+    max_bbox_scale = UInt32(1) << (n_levels - 1)
+    if d.bbox_scale > max_bbox_scale
+        error(
+            """
+            `aabb_scale`=`$(d.bbox_scale)` must be lower than
+            maximum allowed bbox scale, which is `$max_bbox_scale` currently.
+            You can increate `n_levels`=`$n_levels` parameter in `Trainer`
+            by a factor of `2` and try again.
+            """)
+    end
+
     bbox = BBox(SVector{3, Float32}(0.5f0, 0.5f0, 0.5f0))
     inflate(bbox, 0.5f0 * d.bbox_scale)
 end

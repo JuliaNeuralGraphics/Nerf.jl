@@ -1,28 +1,29 @@
 function photometric_loss(
     rgba::R; bundle::RayBundle, samples::RaySamples, images::Images,
+    n_rays::Int,
 ) where R <: AbstractMatrix{Float32}
     dev = device_from_type(R)
     loss = similar(dev, Float32, (length(bundle),))
     ∇rgba = zeros(dev, Float32, size(rgba))
     wait(photometric_loss!(dev)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
-        rgba, bundle.Ξ, bundle.image_indices,
-        bundle.span, samples.deltas, images; ndrange=length(bundle)))
+        rgba, bundle.Ξ, bundle.image_indices, bundle.span, samples.deltas,
+        images, UInt32(n_rays); ndrange=length(bundle)))
     sum(loss), ∇rgba
 end
 
 function ChainRulesCore.rrule(
     ::typeof(photometric_loss), rgba::R; bundle::RayBundle,
-    samples::RaySamples, images::Images,
+    samples::RaySamples, images::Images, n_rays::Int,
 ) where R <: AbstractMatrix{Float32}
-    loss, ∇rgba = photometric_loss(rgba; bundle, samples, images)
+    loss, ∇rgba = photometric_loss(rgba; bundle, samples, images, n_rays)
     photometric_loss_pullback(_) = NoTangent(), ∇rgba
     loss, photometric_loss_pullback
 end
 
 @kernel function photometric_loss!(
     ∇rgba::M, loss::D, rgba::R, Ξ::K, image_indices::I,
-    span::S, deltas::D, images::Images,
+    span::S, deltas::D, images::Images, n_rays::UInt32,
 ) where {
     M <: AbstractVector{SVector{4, Float32}},
     R <: AbstractMatrix{Float32},
@@ -31,7 +32,7 @@ end
     S <: AbstractVector{SVector{3, UInt32}},
     D <: AbstractVector{Float32},
 }
-    @uniform scale::Float32 = 1f0 / (@ndrange()[1])
+    @uniform scale::Float32 = 1f0 / n_rays
 
     i::UInt32 = @index(Global)
     ξ = Ξ[i]

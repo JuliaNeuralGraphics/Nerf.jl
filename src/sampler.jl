@@ -6,7 +6,6 @@ struct RayBundle{
 }
     directions::R
     image_indices::I
-    indices::I
     span::S
     Ξ::K
     n_samples::UInt32
@@ -15,18 +14,16 @@ end
 function Adapt.adapt_structure(to, bundle::RayBundle)
     RayBundle(
         adapt(to, bundle.directions), adapt(to, bundle.image_indices),
-        adapt(to, bundle.indices), adapt(to, bundle.span), adapt(to, bundle.Ξ),
-        bundle.n_samples)
+        adapt(to, bundle.span), adapt(to, bundle.Ξ), bundle.n_samples)
 end
 
 function RayBundle(dev; n_rays::Int)
     directions = similar(dev, SVector{3, Float32}, (n_rays,))
     image_indices = similar(dev, UInt32, (n_rays,))
-    indices = similar(dev, UInt32, (n_rays,))
     span = similar(dev, SVector{3, UInt32}, (n_rays,))
     # 3 random number per ray: 2 - ray pixel, 1 - ray time offset.
     Ξ = reinterpret(SVector{3, Float32}, rand(dev, Float32, (3 * n_rays,)))
-    RayBundle(directions, image_indices, indices, span, Ξ, zero(UInt32))
+    RayBundle(directions, image_indices, span, Ξ, zero(UInt32))
 end
 
 function RayBundle(
@@ -56,11 +53,17 @@ function RayBundle(
     if rc != n_rays
         bundle = RayBundle(
             bundle.directions[1:rc], bundle.image_indices[1:rc],
-            bundle.indices[1:rc], bundle.span[1:rc], bundle.Ξ[1:rc], n_samples)
+            bundle.span[1:rc], bundle.Ξ[1:rc], n_samples)
+    else
+        bundle = RayBundle(
+            bundle.directions, bundle.image_indices, bundle.span,
+            bundle.Ξ, n_samples)
     end
 
     raw_directions = reinterpret(Float32, bundle.directions)
     @assert !any(isnan.(raw_directions))
+    @assert -1f0 ≤ minimum(raw_directions) ≤ 1f0
+    @assert -1f0 ≤ maximum(raw_directions) ≤ 1f0
     s = sum(reshape(reinterpret(UInt32, bundle.span), 3, :)[2, :])
     @assert n_samples == s
 
@@ -111,6 +114,10 @@ function materialize(
     @assert Array(steps_counter)[1] == bundle.n_samples
     @assert !any(isnan.(reinterpret(Float32, samples.points)))
     @assert !any(isnan.(reinterpret(Float32, samples.directions)))
+    @assert 0f0 ≤ minimum(reinterpret(Float32, samples.points)) ≤ 1f0
+    @assert 0f0 ≤ maximum(reinterpret(Float32, samples.points)) ≤ 1f0
+    @assert -1f0 ≤ minimum(reinterpret(Float32, samples.directions)) ≤ 1f0
+    @assert -1f0 ≤ maximum(reinterpret(Float32, samples.directions)) ≤ 1f0
 
     samples
 end
@@ -131,7 +138,7 @@ end
     offset, steps, t_start = span[1], span[2], reinterpret(Float32, span[3])
     ray = Ray(translations[image_idx], direction)
 
-    steps = trace_ray!(
+    new_steps = trace_ray!(
         ray, t_start, steps, cone, bbox, binary, n_levels, resolution,
     ) do point, δ, step
         write_idx = offset + step + 0x1
@@ -139,7 +146,7 @@ end
         samples.directions[write_idx] = direction
         samples.deltas[write_idx] = δ
     end
-    @atomic steps_counter[0x1] + steps
+    @atomic steps_counter[0x1] + new_steps
 end
 
 @kernel function generate_ray_bundle!(
@@ -170,10 +177,8 @@ end
         cone, bbox, binary, n_levels, resolution)
     if steps > 0
         offset, _ = @atomic steps_counter[0x1] + steps
-        ray_idx, _ = @atomic rays_counter[0x1] + 0x1
-        ray_idx += 0x1
+        _, ray_idx = @atomic rays_counter[0x1] + 0x1
 
-        bundle.indices[ray_idx] = i
         bundle.image_indices[ray_idx] = image_idx
         bundle.directions[ray_idx] = ray.direction
         bundle.span[ray_idx] = SVector{3, UInt32}(

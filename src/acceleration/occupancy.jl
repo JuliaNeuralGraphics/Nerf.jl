@@ -37,10 +37,11 @@ end
 
 function update!(
     density_eval_fn, oc::OccupancyGrid;
-    bbox::BBox, step::Int, threshold::Float32 = 0.01f0,
-    decay::Float32 = 0.95f0, warmup_steps::Int = 256,
+    cone::Cone, bbox::BBox, step::Int, n_levels::Int,
+    threshold::Float32 = 0.01f0, decay::Float32 = 0.95f0, warmup_steps::Int = 256,
 )
-    n_samples = length(oc.density)
+    density = @view(oc.density[:, :, :, 1:min(n_levels + 1, get_n_levels(oc))])
+    n_samples = length(density)
     if step < warmup_steps
         n_uniform = n_samples
         n_non_uniform = 0
@@ -59,27 +60,31 @@ function update!(
 
     gp_kernel = generate_points!(dev)
     wait(gp_kernel(
-        points, indices, Ξ, oc.density, bbox,
+        points, indices, Ξ, density, bbox,
         -0.01f0, UInt32(step); ndrange=n_uniform))
     if n_non_uniform > 0
         offset = (n_uniform + 1):n_samples
+        @assert length(offset) == n_non_uniform
         wait(gp_kernel(
             @view(points[offset]), @view(indices[offset]), @view(Ξ[offset]),
-            oc.density, bbox, threshold, UInt32(step); ndrange=n_non_uniform))
+            density, bbox, threshold, UInt32(step); ndrange=n_non_uniform))
     end
 
     raw_points = reshape(reinterpret(Float32, points), 3, :)
+    @assert 0f0 ≤ minimum(raw_points) ≤ 1f0
+    @assert 0f0 ≤ maximum(raw_points) ≤ 1f0
     log_densities = density_eval_fn(raw_points)
 
     tmp_density = zeros(dev, Float32, size(oc.density))
     wait(distribute_density!(dev)(
-        tmp_density, log_densities, indices; ndrange=length(indices)))
+        tmp_density, log_densities, indices, cone.min_stepsize;
+        ndrange=length(indices)))
     wait(ema_update!(dev)(
         oc.density, tmp_density, decay; ndrange=length(oc.density)))
 
     # Binary occupancy update.
     mean_density = mean(x -> max(0f0, x), @view(oc.density[:, :, :, 1]))
-    threshold = max(threshold, mean_density)
+    threshold = min(threshold, mean_density)
     wait(distribute_to_binary!(dev)(
         oc.binary, oc.density, threshold; ndrange=length(oc.binary)))
 
@@ -141,7 +146,7 @@ end
 end
 
 @kernel function distribute_density!(
-    density::D, log_density::L, indices::I,
+    density::D, log_density::L, indices::I, min_cone_stepsize::Float32,
 ) where {
     D <: AbstractArray{Float32, 4},
     L <: AbstractVector{Float32},
@@ -149,11 +154,11 @@ end
 }
     i::UInt32 = @index(Global)
     idx = indices[i]
-    σ = exp(log_density[i]) # TODO * min cone stepsize?
+    σ = exp(log_density[i]) * min_cone_stepsize
     @atomic density[idx] = max(density[idx], σ)
 end
 
-@kernel function generate_points!( # TODO @Const
+@kernel function generate_points!(
     points::P, indices::I, Ξ::R, density::D,
     bbox::BBox, threshold::Float32, step::UInt32,
 ) where {
@@ -163,7 +168,7 @@ end
     D <: AbstractArray{Float32, 4},
 }
     @uniform resolution::UInt32 = size(density, 1)
-    @uniform n_levels::UInt32 = size(density, 4) # TODO wrap in `@view` to limit amount of levels?
+    @uniform n_levels::UInt32 = size(density, 4)
     @uniform level_length::UInt32 = prod(size(density)[1:3])
     @uniform n_elements::UInt32 = @ndrange()[1]
 
@@ -184,7 +189,7 @@ end
 
     point = index_to_point(level_idx, resolution, level, δ)
     indices[i] = idx
-    points[i] = relative_position(bbox, point) # TODO clamp to 0:1?
+    points[i] = relative_position(bbox, point)
 end
 
 # Linear congruential generator.
@@ -208,16 +213,17 @@ end
 )
     @uniform resolution::UInt32 = size(density, 1)
     @uniform level_length::UInt32 = prod(size(density)[1:3])
+    @uniform n_images::UInt32 = length(rotations)
 
     i::UInt32 = @index(Global)
-    level = (i - 0x1) % level_length
-    level_idx = (i - 0x1) ÷ level_length
+    level = (i - 0x1) ÷ level_length
+    level_idx = (i - 0x1) % level_length
 
     point = index_to_point(level_idx, resolution, level)
     voxel_radius = get_voxel_radius(resolution, level)
 
     is_visible = false
-    for j in 1:length(rotations)
+    for j in UnitRange{UInt32}(UInt32(1):n_images)
         new_point = transpose(rotations[j]) * (point - translations[j])
         if new_point[3] > 0f0
             is_visible = is_in_view(new_point, res_scale, voxel_radius)

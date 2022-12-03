@@ -1,13 +1,12 @@
 @testset "Grid Index" begin
-    NPD = 3
     resolution::UInt32 = 16
-    hashmap_size::UInt32 = resolution^NPD
+    hashmap_size::UInt32 = resolution^3
 
-    grid_pos = MVector{NPD, UInt32}(0, 0, 0)
+    grid_pos = MVector{3, UInt32}(0, 0, 0)
     idx = Nerf.grid_index(grid_pos, hashmap_size, resolution)
     @test idx == 1
 
-    grid_pos = MVector{NPD, UInt32}(
+    grid_pos = MVector{3, UInt32}(
         resolution - 1, resolution - 1, resolution - 1)
     idx = Nerf.grid_index(grid_pos, hashmap_size, resolution)
     @test idx == hashmap_size
