@@ -26,8 +26,18 @@ end
     end
 end
 
+@testset "Deterministic result" begin
+    ge = GridEncoding(DEVICE)
+    θ = Nerf.init(ge)
+    fill!(θ, 1f0)
+
+    x = ones(DEVICE, Float32, (3, 16))
+    y = ge(x, θ)
+    @test sum(y) == 512f0
+end
+
 @testset "Hashgrid gradients" begin
-    ge = GridEncoding(DEVICE; n_dims=3)
+    ge = GridEncoding(DEVICE)
     θ = Nerf.init(ge)
 
     n = 16

@@ -13,8 +13,7 @@ end
 
 function Trainer(
     model, dataset::Dataset;
-    n_rays::Int = 1024, ray_steps::Int = 1024,
-    n_levels::Int = 5,
+    n_rays::Int = 1024, ray_steps::Int = 1024, n_levels::Int = 5,
     occupancy_update_frequency::Int = 16,
     occupancy_resolution::Int = 128,
     occupancy_decay::Float32 = 0.95f0,
@@ -43,29 +42,33 @@ function step!(t::Trainer)
             mark_invisible_regions!(
                 t.occupancy; intrinsics=t.dataset.intrinsics,
                 rotations=t.dataset.rotations, translations=t.dataset.translations)
+            CUDA.synchronize()
         end
         update!(
             t.occupancy; cone=t.cone, bbox=t.bbox,
-            step=t.step ÷ t.occupancy_update_frequency,
+            step=t.step, update_frequency=t.occupancy_update_frequency,
             n_levels=get_n_levels(t.dataset),
             decay=t.occupancy_decay^(t.step / 16f0),
         ) do points
             batched_density(t.model, points; batch=512 * 512)
         end
+        CUDA.synchronize()
     end
 
     bundle = RayBundle(
         t.occupancy, t.cone, t.bbox,
         t.dataset.rotations, t.dataset.translations, t.dataset.intrinsics;
         n_rays=t.n_rays)
+    CUDA.synchronize()
     samples = materialize(bundle, t.occupancy, t.cone, t.bbox, t.dataset.translations)
+    CUDA.synchronize()
 
-    loss = 0f0
     raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
     raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
     loss = step!(
         t.model, raw_points, raw_directions;
         bundle, samples, images=t.dataset.images, n_rays=t.n_rays)
+    CUDA.synchronize()
     t.step += 1
     loss
 end

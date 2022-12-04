@@ -2,13 +2,11 @@
 
 julia_version = "1.9.0-alpha1"
 manifest_format = "2.0"
-project_hash = "a4667458faa0a83f3bb4ccbba5d02f5eb69aca7a"
+project_hash = "2e046384efb32161f5395c702152914a9096d40e"
 
 [[deps.AMDGPU]]
 deps = ["AbstractFFTs", "Adapt", "BinaryProvider", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "HIP_jll", "LLD_jll", "LLVM", "LLVM_jll", "Libdl", "LinearAlgebra", "MacroTools", "Pkg", "Preferences", "Printf", "ROCmDeviceLibs_jll", "Random", "Requires", "Setfield", "SpecialFunctions", "Statistics", "hsa_rocr_jll", "rocBLAS_jll", "rocRAND_jll", "rocSPARSE_jll"]
-git-tree-sha1 = "f3a80563258d087b8269298eeab013b3f955e3c5"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaGPU/AMDGPU.jl.git"
+git-tree-sha1 = "4d31e0107d0d07bf364d86cf742452bf7e28ac29"
 uuid = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 version = "0.4.4"
 
@@ -249,11 +247,9 @@ version = "0.1.2"
 
 [[deps.GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "c056927f70bc6bb7162ffd9fc3aeeb8626ce0962"
-repo-rev = "vc/always_inline"
-repo-url = "https://github.com/JuliaGPU/GPUCompiler.jl.git"
+git-tree-sha1 = "30488903139ebf4c88f965e7e396f2d652f988ac"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.16.6"
+version = "0.16.7"
 
 [[deps.Graphics]]
 deps = ["Colors", "LinearAlgebra", "NaNMath"]
@@ -369,7 +365,7 @@ version = "0.1.0"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-path = "/home/pxl-th/.julia/dev/KernelAbstractions"
+git-tree-sha1 = "cf9cae1c4c1ff83f6c02cfaf01698f05448e8325"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 version = "0.8.6"
 
@@ -592,7 +588,7 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.ROCKernels]]
 deps = ["AMDGPU", "Adapt", "KernelAbstractions", "StaticArrays", "UnsafeAtomicsLLVM"]
-path = "/home/pxl-th/.julia/dev/KernelAbstractions/lib/ROCKernels"
+git-tree-sha1 = "7f04267c230db888636c5fe26cff2e874b32b3f4"
 uuid = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
 version = "0.3.2"
 

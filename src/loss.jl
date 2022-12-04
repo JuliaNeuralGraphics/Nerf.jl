@@ -2,13 +2,19 @@ function photometric_loss(
     rgba::R; bundle::RayBundle, samples::RaySamples, images::Images,
     n_rays::Int,
 ) where R <: AbstractMatrix{Float32}
+    rgb = rgba[1:3, :]
+    @assert 0f0 ≤ minimum(rgb) ≤ 1f0
+    @assert 0f0 ≤ maximum(rgb) ≤ 1f0
+
     dev = device_from_type(R)
     loss = similar(dev, Float32, (length(bundle),))
     ∇rgba = zeros(dev, Float32, size(rgba))
+    CUDA.synchronize()
     wait(photometric_loss!(dev)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.Ξ, bundle.image_indices, bundle.span, samples.deltas,
         images, UInt32(n_rays); ndrange=length(bundle)))
+    CUDA.synchronize()
     sum(loss), ∇rgba
 end
 
@@ -43,16 +49,20 @@ end
     composed_rgb, composed_steps = alpha_compose!(nothing, rgba, offset, steps, deltas)
     target_rgb = sample(images, SVector{2, Float32}(ξ[1], ξ[2]), image_idx)
 
-    δ = composed_rgb .- target_rgb
-    ∇loss = 2f0 .* δ
-    loss[i] = mean(abs2, δ) * scale
+    diff = composed_rgb .- target_rgb
+    ∇loss = 2f0 .* diff
+    loss[i] = mean(abs2, diff) * scale
 
-    alpha_compose!(rgba, offset, composed_steps, deltas) do rgb, hcomposed_rgb, ω, δt, σ, T, write_idx
+    @inline function consumer(
+        rgb::SVector{3, Float32}, hcomposed_rgb::MVector{3, Float32},
+        ω::Float32, δt::Float32, σ::Float32, T::Float32, write_idx::UInt32,
+    )
         δrgb = composed_rgb .- hcomposed_rgb
         ∇rgb = ω .* ∇loss .* ∇sigmoid(rgb) .* scale
         ∇σ = σ * δt * (∇loss ⋅ (T .* rgb .- δrgb)) * scale
-        ∇rgba[write_idx] = SVector{4, Float32}(∇rgb..., ∇σ)
+        ∇rgba[write_idx] = SVector{4, Float32}(∇rgb[1], ∇rgb[2], ∇rgb[3], ∇σ)
     end
+    alpha_compose!(consumer, rgba, offset, composed_steps, deltas)
 end
 
 @inline ∇sigmoid(v::SVector{3, Float32}) = v .* (1f0 .- v)

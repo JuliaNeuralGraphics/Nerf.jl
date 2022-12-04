@@ -5,7 +5,7 @@ struct BasicField{G, D, C}
 end
 
 function BasicField(dev; backbone_size::Int = 16, grid_kwargs...)
-    ge = GridEncoding(dev; n_dims=3, grid_kwargs...)
+    ge = GridEncoding(dev; grid_kwargs...)
     density_mlp_input = prod(get_output_shape(ge))
     color_mlp_input = 16 + backbone_size # 16 for spherical harmonics
     density_mlp = Chain(

@@ -98,8 +98,8 @@ function main()
     dataset = Dataset(dev; config_file)
 
     model = BasicModel(BasicField(dev))
-    trainer = Trainer(model, dataset; n_rays=256, ray_steps=256, n_levels=5)
-    for i in 1:1000
+    trainer = Trainer(model, dataset; n_rays=1024, ray_steps=1024, n_levels=5)
+    for i in 1:(16 * 100)
         l = step!(trainer)
         @show i, l
     end

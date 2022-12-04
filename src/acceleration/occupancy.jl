@@ -37,7 +37,7 @@ end
 
 function update!(
     density_eval_fn, oc::OccupancyGrid;
-    cone::Cone, bbox::BBox, step::Int, n_levels::Int,
+    cone::Cone, bbox::BBox, step::Int, update_frequency::Int, n_levels::Int,
     threshold::Float32 = 0.01f0, decay::Float32 = 0.95f0, warmup_steps::Int = 256,
 )
     density = @view(oc.density[:, :, :, 1:min(n_levels + 1, get_n_levels(oc))])
@@ -52,6 +52,8 @@ function update!(
         n_samples = n_uniform + n_non_uniform
     end
 
+    step /= update_frequency
+
     dev = get_device(oc)
     points = similar(dev, SVector{3, Float32}, (n_samples,))
     indices = similar(dev, UInt32, (n_samples,))
@@ -64,7 +66,6 @@ function update!(
         -0.01f0, UInt32(step); ndrange=n_uniform))
     if n_non_uniform > 0
         offset = (n_uniform + 1):n_samples
-        @assert length(offset) == n_non_uniform
         wait(gp_kernel(
             @view(points[offset]), @view(indices[offset]), @view(Ξ[offset]),
             density, bbox, threshold, UInt32(step); ndrange=n_non_uniform))
@@ -82,8 +83,14 @@ function update!(
     wait(ema_update!(dev)(
         oc.density, tmp_density, decay; ndrange=length(oc.density)))
 
-    # Binary occupancy update.
+    update_binary!(oc; threshold)
+end
+
+function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
+    dev = get_device(oc)
+
     mean_density = mean(x -> max(0f0, x), @view(oc.density[:, :, :, 1]))
+    @show mean_density
     threshold = min(threshold, mean_density)
     wait(distribute_to_binary!(dev)(
         oc.binary, oc.density, threshold; ndrange=length(oc.binary)))
@@ -155,7 +162,8 @@ end
     i::UInt32 = @index(Global)
     idx = indices[i]
     σ = exp(log_density[i]) * min_cone_stepsize
-    @atomic density[idx] = max(density[idx], σ)
+    # @atomic density[idx] = max(density[idx], σ)
+    @atomic max(density[idx], σ)
 end
 
 @kernel function generate_points!(
@@ -181,7 +189,7 @@ end
 
     level_idx = zero(UInt32)
     idx = zero(UInt32)
-    for j in zero(UInt32):UInt32(9)
+    for j in UnitRange{UInt32}(zero(UInt32), UInt32(9))
         level_idx = lcg(i - 0x1 + step * n_elements, j, level_length)
         idx = level_idx + level_offset + 0x1
         density[idx] > threshold && break

@@ -2,6 +2,7 @@
     y, ∂y∂x, @Const(x), @Const(grid), @Const(offset_table),
     npd::Val{NPD}, ::Val{NFPL}, base_resolution::UInt32, log_scale::Float32,
 ) where {NPD, NFPL}
+
     i::UInt32, level::UInt32 = @index(Global, NTuple)
 
     θ = @view(grid[:, (offset_table[level] + 0x1):offset_table[level + 0x1]])
@@ -14,12 +15,12 @@
 
     result = zeros(MVector{NFPL, Float32})
     local_grid_position = MVector{NPD, UInt32}(undef)
-    for idx in 0x1:((UInt32(1) << NPD) - 0x1)
-        ω = one(Float32)
+    for idx in UnitRange{UInt32}(UInt32(0), (UInt32(1) << NPD) - 0x1)
+        ω = 1f0
 
-        for dim in 0x1:NPD
+        for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
             if idx & (UInt32(1) << (dim - 0x1)) == 0x0
-                ω *= one(Float32) - δposition[dim]
+                ω *= 1f0 - δposition[dim]
                 local_grid_position[dim] = grid_position[dim] # ⎣x⎦
             else
                 ω *= δposition[dim]
@@ -29,11 +30,11 @@
 
         hash_index = grid_index(
             local_grid_position, hashmap_size, resolution)
-        for f in 1:NFPL
+        for f in UnitRange{UInt32}(UInt32(1), UInt32(NFPL))
             result[f] += ω * θ[f, hash_index]
         end
     end
-    for f in 1:NFPL
+    for f in UnitRange{UInt32}(UInt32(1), UInt32(NFPL))
         y[f, level, i] = result[f]
     end
 
@@ -92,16 +93,16 @@ end
     δposition, grid_position, _ = to_grid_position(@view(x[:, i]), scale, npd)
 
     s∂L∂y = MVector{NFPL, Float32}(undef)
-    for f in 1:NFPL
+    for f in UnitRange{UInt32}(UInt32(1), UInt32(NFPL))
         s∂L∂y[f] = ∂L∂y[f, level, i]
     end
 
     grid_pos_local = MVector{NPD, UInt32}(undef)
-    for idx in 0x0:((UInt32(1) << NPD) - 0x1)
-        ω = one(Float32)
-        for dim in 1:NPD
+    for idx in UnitRange{UInt32}(UInt32(0), (UInt32(1) << NPD) - 0x1)
+        ω = 1f0
+        for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
             if idx & (UInt32(1) << (dim - 0x1)) == 0x0
-                ω *= one(Float32) - δposition[dim]
+                ω *= 1f0 - δposition[dim]
                 grid_pos_local[dim] = grid_position[dim]
             else
                 ω *= δposition[dim]
@@ -111,7 +112,7 @@ end
 
         hash_index = offset_start + grid_index(
             grid_pos_local, hashmap_size, grid_resolution)
-        for f in 1:NFPL
+        for f in UnitRange{UInt32}(UInt32(1), UInt32(NFPL))
             @atomic ∂grid[f, hash_index] += s∂L∂y[f] * ω
         end
     end

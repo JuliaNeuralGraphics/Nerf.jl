@@ -12,13 +12,11 @@ struct GridEncoding{O}
 end
 
 function GridEncoding(
-    dev; n_dims::Int, n_levels::Int = 16, scale::Float32 = 1.5f0,
+    dev; n_levels::Int = 16, scale::Float32 = 1.5f0,
     base_resolution::Int = 16, n_features::Int = 2, hashmap_size::Int = 19,
 )
-    # TODO throw
-    @assert n_dims ≤ 3
     @assert n_levels < 34 "Too many levels for the offset table."
-
+    n_dims = 3
     max_params = typemax(UInt32) ÷ 0x2
     hashmap_params = one(UInt32) << hashmap_size
 

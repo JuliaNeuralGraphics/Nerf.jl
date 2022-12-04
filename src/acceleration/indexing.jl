@@ -14,14 +14,14 @@ end
 )
     scale = ldexp(1f0, -Int32(level))
     inv_point = compute_point_inv(point, resolution, scale)
-    morton3D(inv_point...)
+    morton3D(inv_point[1], inv_point[2], inv_point[3])
 end
 
-@inline function compute_point(inv_idx, resolution::UInt32, scale)
+@inline function compute_point(inv_idx, resolution::UInt32, scale::Float32)
     scale .* (inv_idx ./ resolution .- 0.5f0) .+ 0.5f0
 end
 
-@inline function compute_point_inv(point, resolution::UInt32, scale)
+@inline function compute_point_inv(point, resolution::UInt32, scale::Float32)
     UInt32.(clamp.(
         floor.(((point .- 0.5f0) .* scale .+ 0.5f0) .* resolution),
         zero(UInt32), resolution - one(UInt32)))

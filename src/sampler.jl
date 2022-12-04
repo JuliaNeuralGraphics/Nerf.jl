@@ -138,14 +138,14 @@ end
     offset, steps, t_start = span[1], span[2], reinterpret(Float32, span[3])
     ray = Ray(translations[image_idx], direction)
 
-    new_steps = trace_ray!(
-        ray, t_start, steps, cone, bbox, binary, n_levels, resolution,
-    ) do point, δ, step
+    @inline function consumer(point::SVector{3, Float32}, δ::Float32, step::UInt32)
         write_idx = offset + step + 0x1
         samples.points[write_idx] = relative_position(bbox, point)
         samples.directions[write_idx] = direction
         samples.deltas[write_idx] = δ
     end
+    new_steps = trace_ray!(
+        consumer, ray, t_start, steps, cone, bbox, binary, n_levels, resolution)
     @atomic steps_counter[0x1] + new_steps
 end
 
