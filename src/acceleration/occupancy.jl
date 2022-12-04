@@ -51,8 +51,11 @@ function update!(
         n_non_uniform = n_samples
         n_samples = n_uniform + n_non_uniform
     end
+    @show n_uniform
+    @show n_non_uniform
 
-    step /= update_frequency
+    step ÷= update_frequency
+    @show step
 
     dev = get_device(oc)
     points = similar(dev, SVector{3, Float32}, (n_samples,))
@@ -162,7 +165,6 @@ end
     i::UInt32 = @index(Global)
     idx = indices[i]
     σ = exp(log_density[i]) * min_cone_stepsize
-    # @atomic density[idx] = max(density[idx], σ)
     @atomic max(density[idx], σ)
 end
 
@@ -196,8 +198,8 @@ end
     end
 
     point = index_to_point(level_idx, resolution, level, δ)
-    indices[i] = idx
     points[i] = relative_position(bbox, point)
+    indices[i] = idx
 end
 
 # Linear congruential generator.
