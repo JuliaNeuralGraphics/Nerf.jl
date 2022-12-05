@@ -32,6 +32,7 @@
     bundle_host = Nerf.Adapt.adapt(Array, bundle)
     samples_host = Nerf.Adapt.adapt(Array, samples)
 
+    valid_samples = true
     total_steps = 0
     for i in 1:length(bundle_host)
         offset, steps, _ = bundle_host.span[i]
@@ -43,14 +44,17 @@
             point = Nerf.inv_relative_position(
                 bbox, samples_host.points[read_idx])
             direction = samples_host.directions[read_idx]
-            @test norm(direction) ≈ 1f0
-
             t = ((point .- origin) ./ direction)[1]
-            @test t > 0f0
-            @test isapprox(Nerf.Ray(origin, direction)(t), point; atol=1f-3)
+
+            valid_samples &= norm(direction) ≈ 1f0
+            valid_samples &= t > 0f0
+            valid_samples &= isapprox(Nerf.Ray(origin, direction)(t), point; atol=1f-3)
+            valid_samples || break
 
             total_steps += 1
         end
+        valid_samples || break
     end
+    @test valid_samples
     @test total_steps == bundle.n_samples
 end

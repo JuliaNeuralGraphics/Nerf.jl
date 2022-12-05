@@ -86,6 +86,7 @@ include("nn/nn.jl")
 include("sampler.jl")
 include("loss.jl")
 include("trainer.jl")
+include("renderer/renderer.jl")
 include("models/basic.jl")
 
 @info "Backend: $BACKEND"
@@ -93,9 +94,23 @@ include("models/basic.jl")
 
 function main()
     dev = DEVICE
-
     config_file = "/home/pxl-th/code/INGP.jl/data/raccoon_sofa2/transforms.json"
     dataset = Dataset(dev; config_file)
+
+    # images = adapt(Array, dataset.images)
+    # width, height = size(images.data, 2), size(images.data, 3)
+    # for i in 1:size(images.data, 4)
+    #     raw_img = similar(CPU(), SVector{3, Float32}, (width, height))
+    #     for w in 1:width, h in 1:height
+    #         raw_img[w, h] = sample(
+    #             images,
+    #             SVector{2, Float32}((w - 1) / width, (h - 1) / height),
+    #             UInt32(i))
+    #     end
+    #     raw_img = reshape(reinterpret(Float32, raw_img), 3, width, height)
+    #     img = colorview(RGB{Float32}, permutedims(raw_img, (1, 3, 2)))
+    #     save("img-$i.png", img)
+    # end
 
     model = BasicModel(BasicField(dev))
     trainer = Trainer(model, dataset; n_rays=1024, ray_steps=1024, n_levels=5)
@@ -103,6 +118,11 @@ function main()
         l = step!(trainer)
         @show i, l
     end
+
+    # camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
+    # set_projection!(camera, dataset.rotations_host[1], dataset.translations_host[1])
+    # renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
+    # render!(renderer, trainer.occupancy)
 
     nothing
 end

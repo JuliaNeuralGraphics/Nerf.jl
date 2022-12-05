@@ -6,22 +6,20 @@ Adapt.adapt_structure(to, xs::Images) = Images(adapt(to, xs.data))
 
 function Images(frame_filepaths::Vector{String})
     n_images = length(frame_filepaths)
-
     first_image = load_image(frame_filepaths[1]; target_size=nothing)
     height, width = size(first_image)
-    n_channels = length(eltype(first_image))
 
-    data = Array{UInt8}(undef, n_channels, width, height, n_images)
+    data = Array{UInt8}(undef, 3, width, height, n_images)
     data[:, :, :, 1] .= raw_image(first_image)
     for i in 2:n_images
-        image = load_image(frame_filepaths[2]; target_size=(height, width))
+        image = load_image(frame_filepaths[i]; target_size=(height, width))
         data[:, :, :, i] .= raw_image(image)
     end
     Images(data)
 end
 
 function load_image(filename::String; target_size)
-    frame = load(filename)
+    frame = RGB.(load(filename))
     if target_size ≢ nothing && size(frame) != target_size
         frame = imresize(frame, target_size)
     end
@@ -46,5 +44,5 @@ end
 @inline function to_pixel(xy::SVector{2, Float32}, width::UInt32, height::UInt32)
     resolution = SVector{2, UInt32}(width, height)
     p = floor.(UInt32, xy .* resolution)
-    min.(resolution .- 0x1, p) .+ 0x1
+    min.(p, resolution .- 0x1) .+ 0x1
 end

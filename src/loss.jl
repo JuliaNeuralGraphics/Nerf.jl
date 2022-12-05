@@ -1,20 +1,13 @@
 function photometric_loss(
-    rgba::R; bundle::RayBundle, samples::RaySamples, images::Images,
-    n_rays::Int,
+    rgba::R; bundle::RayBundle, samples::RaySamples, images::Images, n_rays::Int,
 ) where R <: AbstractMatrix{Float32}
-    rgb = rgba[1:3, :]
-    @assert 0f0 ≤ minimum(rgb) ≤ 1f0
-    @assert 0f0 ≤ maximum(rgb) ≤ 1f0
-
     dev = device_from_type(R)
     loss = similar(dev, Float32, (length(bundle),))
     ∇rgba = zeros(dev, Float32, size(rgba))
-    CUDA.synchronize()
     wait(photometric_loss!(dev)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.Ξ, bundle.image_indices, bundle.span, samples.deltas,
         images, UInt32(n_rays); ndrange=length(bundle)))
-    CUDA.synchronize()
     sum(loss), ∇rgba
 end
 
@@ -23,7 +16,9 @@ function ChainRulesCore.rrule(
     samples::RaySamples, images::Images, n_rays::Int,
 ) where R <: AbstractMatrix{Float32}
     loss, ∇rgba = photometric_loss(rgba; bundle, samples, images, n_rays)
-    photometric_loss_pullback(_) = NoTangent(), ∇rgba
+    function photometric_loss_pullback(_)
+        NoTangent(), ∇rgba
+    end
     loss, photometric_loss_pullback
 end
 
@@ -57,9 +52,9 @@ end
         rgb::SVector{3, Float32}, hcomposed_rgb::MVector{3, Float32},
         ω::Float32, δt::Float32, σ::Float32, T::Float32, write_idx::UInt32,
     )
-        δrgb = composed_rgb .- hcomposed_rgb
+        rgb_diff = composed_rgb .- hcomposed_rgb
         ∇rgb = ω .* ∇loss .* ∇sigmoid(rgb) .* scale
-        ∇σ = σ * δt * (∇loss ⋅ (T .* rgb .- δrgb)) * scale
+        ∇σ = σ * δt * (∇loss ⋅ (T .* rgb .- rgb_diff)) * scale
         ∇rgba[write_idx] = SVector{4, Float32}(∇rgb[1], ∇rgb[2], ∇rgb[3], ∇σ)
     end
     alpha_compose!(consumer, rgba, offset, composed_steps, deltas)

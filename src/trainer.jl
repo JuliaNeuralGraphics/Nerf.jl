@@ -33,42 +33,42 @@ end
 function reset!(t::Trainer)
     reset!(t.model)
     reset!(t.occupancy)
-    t.n_steps = 0
+    t.step = 0
 end
 
 function step!(t::Trainer)
-    if t.step % t.occupancy_update_frequency == 0
-        if t.step == 0
-            mark_invisible_regions!(
-                t.occupancy; intrinsics=t.dataset.intrinsics,
-                rotations=t.dataset.rotations, translations=t.dataset.translations)
-            CUDA.synchronize()
-        end
-        update!(
-            t.occupancy; cone=t.cone, bbox=t.bbox,
-            step=t.step, update_frequency=t.occupancy_update_frequency,
-            n_levels=get_n_levels(t.dataset),
-            decay=t.occupancy_decay^(t.step / 16f0),
-        ) do points
-            batched_density(t.model, points; batch=512 * 512)
-        end
-        CUDA.synchronize()
-    end
+    prepare!(t)
 
     bundle = RayBundle(
-        t.occupancy, t.cone, t.bbox,
-        t.dataset.rotations, t.dataset.translations, t.dataset.intrinsics;
-        n_rays=t.n_rays)
-    CUDA.synchronize()
+        t.occupancy, t.cone, t.bbox, t.dataset.rotations,
+        t.dataset.translations, t.dataset.intrinsics; n_rays=t.n_rays)
     samples = materialize(bundle, t.occupancy, t.cone, t.bbox, t.dataset.translations)
-    CUDA.synchronize()
 
     raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
     raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
     loss = step!(
         t.model, raw_points, raw_directions;
         bundle, samples, images=t.dataset.images, n_rays=t.n_rays)
-    CUDA.synchronize()
     t.step += 1
     loss
+end
+
+function prepare!(t::Trainer)
+    t.step % t.occupancy_update_frequency != 0 && return nothing
+
+    if t.step == 0
+        mark_invisible_regions!(
+            t.occupancy; intrinsics=t.dataset.intrinsics,
+            rotations=t.dataset.rotations, translations=t.dataset.translations)
+    end
+
+    decay::Float32 = t.occupancy_decay^(t.step / t.occupancy_update_frequency)
+    update!(
+        t.occupancy; cone=t.cone, bbox=t.bbox,
+        step=t.step, update_frequency=t.occupancy_update_frequency,
+        n_levels=get_n_levels(t.dataset), decay,
+    ) do points
+        batched_density(t.model, points; batch=512 * 512)
+    end
+    return nothing
 end

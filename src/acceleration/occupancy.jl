@@ -35,6 +35,7 @@ end
     (binary[bidx] & mask) > 0x0
 end
 
+# n_levels: 0-based
 function update!(
     density_eval_fn, oc::OccupancyGrid;
     cone::Cone, bbox::BBox, step::Int, update_frequency::Int, n_levels::Int,
@@ -51,11 +52,8 @@ function update!(
         n_non_uniform = n_samples
         n_samples = n_uniform + n_non_uniform
     end
-    @show n_uniform
-    @show n_non_uniform
 
     step ÷= update_frequency
-    @show step
 
     dev = get_device(oc)
     points = similar(dev, SVector{3, Float32}, (n_samples,))
@@ -75,8 +73,6 @@ function update!(
     end
 
     raw_points = reshape(reinterpret(Float32, points), 3, :)
-    @assert 0f0 ≤ minimum(raw_points) ≤ 1f0
-    @assert 0f0 ≤ maximum(raw_points) ≤ 1f0
     log_densities = density_eval_fn(raw_points)
 
     tmp_density = zeros(dev, Float32, size(oc.density))
@@ -93,7 +89,6 @@ function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
     dev = get_device(oc)
 
     mean_density = mean(x -> max(0f0, x), @view(oc.density[:, :, :, 1]))
-    @show mean_density
     threshold = min(threshold, mean_density)
     wait(distribute_to_binary!(dev)(
         oc.binary, oc.density, threshold; ndrange=length(oc.binary)))
@@ -178,8 +173,8 @@ end
     D <: AbstractArray{Float32, 4},
 }
     @uniform resolution::UInt32 = size(density, 1)
+    @uniform level_length::UInt32 = resolution^3
     @uniform n_levels::UInt32 = size(density, 4)
-    @uniform level_length::UInt32 = prod(size(density)[1:3])
     @uniform n_elements::UInt32 = @ndrange()[1]
 
     i::UInt32 = @index(Global)

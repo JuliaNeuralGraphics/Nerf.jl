@@ -114,8 +114,8 @@ end
 function ChainRulesCore.rrule(ge::GridEncoding, x, θ)
     n = size(x, 2)
     function encode_pullback(Δ)
-        Δ = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
-        Tangent{GridEncoding}(), NoTangent(), ∇(ge, Δ, x, θ)
+        Δ2 = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
+        Tangent{GridEncoding}(), NoTangent(), ∇(ge, Δ2, x, θ)
     end
     ge(x, θ), encode_pullback
 end
@@ -124,10 +124,10 @@ function ChainRulesCore.rrule(ge::GridEncoding, x, θ, ::Val{:IG})
     n = size(x, 2)
     y, ∂y∂x = ge(x, θ, Val{:IG}())
     function encode_pullback(Δ)
-        Δ = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
+        Δ2 = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
         (
-            Tangent{GridEncoding}(), @thunk(∇grid_input(ge, Δ, ∂y∂x)),
-            @thunk(∇(ge, Δ, x, θ)), NoTangent())
+            Tangent{GridEncoding}(), @thunk(∇grid_input(ge, Δ2, ∂y∂x)),
+            @thunk(∇(ge, Δ2, x, θ)), NoTangent())
     end
     y, encode_pullback
 end

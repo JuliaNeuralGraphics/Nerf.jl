@@ -7,7 +7,7 @@
     ∇position = MVector{NPD, Float32}(undef)
     grid_position = MVector{NPD, UInt32}(undef)
 
-    for dim in UnitRange{UInt32}(one(UInt32), UInt32(NPD))
+    for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
         δposition[dim] = x[dim] * scale + 0.5f0
         tmp = floor(δposition[dim])
         δposition[dim] -= tmp
@@ -32,10 +32,10 @@ end
 @inline function grid_index(
     grid_pos::MVector{NPD, UInt32}, hashmap_size::UInt32, resolution::UInt32,
 ) where NPD
-    stride = one(UInt32)
-    index = zero(UInt32)
+    stride = UInt32(1)
+    index = UInt32(0)
 
-    for dim in UnitRange{UInt32}(one(UInt32), UInt32(NPD))
+    for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
         stride > hashmap_size && break
         index += grid_pos[dim] * stride
         stride *= resolution
@@ -49,8 +49,8 @@ end
 
 @inline function fast_hash(pos_grid::MVector{NPD, UInt32}) where NPD
     primes = (0x00000001, 0x9e3779b1, 0x30025795)
-    result = zero(UInt32)
-    for dim in UnitRange{UInt32}(one(UInt32), UInt32(NPD))
+    result = UInt32(0)
+    for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
         result ⊻= pos_grid[dim] * primes[dim]
     end
     result

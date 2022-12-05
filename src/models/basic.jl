@@ -41,14 +41,14 @@ function _check_mode(mode)
 end
 
 function (b::BasicField)(
-    points::P, directions::D, θ; mode = Val{:NOIG}(),
+    points::P, directions::D, θ, mode = Val{:NOIG}(),
 ) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
     _check_mode(mode)
     if mode == Val{:NOIG}()
         encoded_points = b.grid_encoding(points, θ.θge)
-    elseif mode == Val{:IG}()
+    else
         encoded_points = b.grid_encoding(points, θ.θge, mode)
     end
     encoded_directions = spherical_harmonics(directions)
@@ -57,11 +57,11 @@ function (b::BasicField)(
     vcat(rgb, backbone[[1], :])
 end
 
-function density(b::BasicField, points::P, θ; mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
+function density(b::BasicField, points::P, θ, mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
     _check_mode(mode)
     if mode == Val{:NOIG}()
         encoded_points = b.grid_encoding(points, θ.θge)
-    elseif mode == Val{:IG}()
+    else
         encoded_points = b.grid_encoding(points, θ.θge, mode)
     end
     b.density_mlp(encoded_points, θ.θdensity)[1, :]
@@ -110,7 +110,7 @@ end
 
 function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     Y, back = Zygote.pullback(points) do p
-        density(m.field, p, m.θ; mode=Val{:IG}())
+        density(m.field, p, m.θ, Val{:IG}())
     end
     ∇ = back(ones(get_device(m), Float32, size(Y)))[1]
     safe_normalize(-∇; dims=1)

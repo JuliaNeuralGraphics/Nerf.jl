@@ -59,14 +59,6 @@ function RayBundle(
             bundle.directions, bundle.image_indices, bundle.span,
             bundle.Ξ, n_samples)
     end
-
-    raw_directions = reinterpret(Float32, bundle.directions)
-    @assert !any(isnan.(raw_directions))
-    @assert -1f0 ≤ minimum(raw_directions) ≤ 1f0
-    @assert -1f0 ≤ maximum(raw_directions) ≤ 1f0
-    s = sum(reshape(reinterpret(UInt32, bundle.span), 3, :)[2, :])
-    @assert n_samples == s
-
     bundle
 end
 
@@ -110,15 +102,6 @@ function materialize(
     wait(materialize_ray_bundle!(dev)(
         steps_counter, samples, bundle, cone, bbox, translations,
         occupancy.binary, n_levels, resolution; ndrange=length(bundle)))
-
-    @assert Array(steps_counter)[1] == bundle.n_samples
-    @assert !any(isnan.(reinterpret(Float32, samples.points)))
-    @assert !any(isnan.(reinterpret(Float32, samples.directions)))
-    @assert 0f0 ≤ minimum(reinterpret(Float32, samples.points)) ≤ 1f0
-    @assert 0f0 ≤ maximum(reinterpret(Float32, samples.points)) ≤ 1f0
-    @assert -1f0 ≤ minimum(reinterpret(Float32, samples.directions)) ≤ 1f0
-    @assert -1f0 ≤ maximum(reinterpret(Float32, samples.directions)) ≤ 1f0
-
     samples
 end
 
@@ -144,7 +127,7 @@ end
         samples.directions[write_idx] = direction
         samples.deltas[write_idx] = δ
     end
-    new_steps = trace_ray!(
+    _, _, new_steps = trace_ray!(
         consumer, ray, t_start, steps, cone, bbox, binary, n_levels, resolution)
     @atomic steps_counter[0x1] + new_steps
 end
@@ -164,7 +147,7 @@ end
 
     i::UInt32 = @index(Global)
     image_idx = image_index(i, n_rays, n_images)
-    ξ = bundle.Ξ[i]
+    ξ = bundle.Ξ[i] # i does not match loss?
     ray = Ray(
         SVector{2, Float32}(ξ[1], ξ[2]), rotations[image_idx],
         translations[image_idx], intrinsics)
@@ -172,12 +155,13 @@ end
     t_start::Float32 = max(0f0, (bbox ∩ ray)[1])
     t_start += delta(cone, t_start) * ξ[3]
 
-    steps = trace_ray!(
+    _, _, steps = trace_ray!(
         nothing, ray, t_start, cone.steps,
         cone, bbox, binary, n_levels, resolution)
     if steps > 0
         offset, _ = @atomic steps_counter[0x1] + steps
         _, ray_idx = @atomic rays_counter[0x1] + 0x1
+        # TODO use old ray_idx?
 
         bundle.image_indices[ray_idx] = image_idx
         bundle.directions[ray_idx] = ray.direction
@@ -192,9 +176,10 @@ end
 ) where B <: AbstractVector{UInt8}
     t::Float32 = t_start
     step::UInt32 = zero(UInt32)
+    alive = true
     while step < steps
         point = ray(t)
-        point ∈ bbox || break
+        point ∈ bbox || (alive = false; break)
 
         δ = delta(cone, t)
         level = level_from_delta(δ, point, n_levels, resolution)
@@ -206,7 +191,7 @@ end
             t = to_next_voxel(t, cone, point, ray.direction, resolution >> level)
         end
     end
-    step
+    alive, t, step
 end
 
 @inline function to_next_voxel(
