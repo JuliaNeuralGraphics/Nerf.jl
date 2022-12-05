@@ -95,7 +95,8 @@ function compact(
 end
 
 function materialize(rays::R) where R <: AbstractVector{RenderRay}
-    
+    # TODO count samples
+    # TODO generate samples
 end
 
 @kernel function count_render_samples!(
