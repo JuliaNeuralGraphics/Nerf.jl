@@ -114,15 +114,35 @@ function main()
 
     model = BasicModel(BasicField(dev))
     trainer = Trainer(model, dataset; n_rays=1024, ray_steps=1024, n_levels=5)
-    for i in 1:(16 * 100)
-        l = step!(trainer)
-        @show i, l
-    end
 
-    # camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    # set_projection!(camera, dataset.rotations_host[1], dataset.translations_host[1])
-    # renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
-    # render!(renderer, trainer.occupancy)
+    # for i in 1:(16 * 100)
+    #     l = step!(trainer)
+    #     @show i, l
+    # end
+
+    # Fill occupancy with cube at 0th level.
+    resolution = get_resolution(trainer.occupancy)
+    density_level = zeros(Float32, resolution, resolution, resolution)
+    for level in 0:3
+        fill!(density_level, 0f0)
+        for i in 1:length(density_level)
+            point = index_to_point(
+                UInt32(i - 1), UInt32(resolution), UInt32(level))
+            idx = point_to_index(point, UInt32(resolution), UInt32(level))
+            density_level[idx + 1] = 1f0
+        end
+        copy!(
+            @view(trainer.occupancy.density[:, :, :, level + 1]),
+            density_level)
+    end
+    @show sum(trainer.occupancy.binary)
+    update_binary!(trainer.occupancy)
+    @show sum(trainer.occupancy.binary)
+
+    camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
+    set_projection!(camera, dataset.rotations_host[1], dataset.translations_host[1])
+    renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
+    render!(renderer, trainer.occupancy)
 
     nothing
 end

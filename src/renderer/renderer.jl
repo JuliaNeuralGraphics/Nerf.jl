@@ -23,7 +23,7 @@ function render!(
     min_transmittance::Float32 = 1f-3,
 )
     rays = init_rays(r, occupancy; near)
-    trace(r, rays; steps, min_transmittance)
+    trace(r, rays, occupancy; steps, min_transmittance)
     """
     - init rays
     - trace
@@ -51,7 +51,8 @@ function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
 end
 
 function trace(
-    r::Renderer, rays::R; steps::Int, min_transmittance::Float32,
+    r::Renderer, rays::R, occupancy::OccupancyGrid;
+    steps::Int, min_transmittance::Float32,
 ) where R <: AbstractVector{RenderRay}
     dev = get_device(r)
     hit_ids = similar(dev, UInt32, (length(rays),))
@@ -61,13 +62,15 @@ function trace(
     fill!(reinterpret(Float32, rgba), 0f0)
 
     hit_counter = zeros(dev, UInt32, (1,))
+    max_samples = 8
 
     for step in 1:steps
         rays, rgba = compact(
             hit_ids, hit_rgba, rays, rgba; hit_counter, min_transmittance)
+        @show length(rays)
         length(rays) == 0 && break
 
-        materialize(rays)
+        materialize(r, rays, occupancy; max_samples)
         break
     end
 end
@@ -89,23 +92,47 @@ function compact(
         alive_rays, alive_rgba, hit_ids, hit_rgba, rays, rgba,
         min_transmittance, alive_counter, hit_counter; ndrange=length(rays)))
 
-    n_alive = Array(alive_counter)[1]
+    n_alive = Array{Int}(alive_counter)[1]
+    @show length(rays)
+    @show n_alive
     n_alive == length(rays) && return alive_rays, alive_rgba
     return alive_rays[1:n_alive], alive_rgba[1:n_alive]
 end
 
-function materialize(rays::R) where R <: AbstractVector{RenderRay}
-    # TODO count samples
+function materialize(
+    r::Renderer, rays::R, occupancy::OccupancyGrid; max_samples::Int,
+) where R <: AbstractVector{RenderRay}
+    dev = device_from_type(R)
+    span = similar(dev, SVector{3, UInt32}, (length(rays),))
+    steps_counter = zeros(dev, UInt32, (1,))
+    rays_counter = zeros(dev, UInt32, (1,))
+
+    _, origin = split_pose(r.camera)
+
+    n_levels::UInt32 = get_n_levels(occupancy)
+    resolution::UInt32 = get_resolution(occupancy)
+    wait(count_render_samples!(dev)(
+        span, steps_counter, rays_counter,
+        rays, origin, r.bbox, UInt32(max_samples), r.cone,
+        occupancy.binary, n_levels, resolution; ndrange=length(rays)))
+
+    n_samples = Array{Int}(steps_counter)[1]
+    @show n_samples
+    @assert n_samples > 0
+
+    # points = similar(dev, Float32, (3, n_samples))
+    # directions = similar(dev, Float32, (3, n_samples))
     # TODO generate samples
+    # TODO update render rays as well
 end
 
 @kernel function count_render_samples!(
-    span::S, steps_counter::K, rays_counter::K, rays::R,
-    origin::SVector{3, Float32},
-    bbox::BBox, train_bbox::BBox, max_samples::UInt32,
-    cone::Cone, binary::B, n_levels::UInt32, resolution::UInt32,
+    span::S, steps_counter::K, rays_counter::K,
+    rays::R, origin::SVector{3, Float32}, bbox::BBox,
+    max_samples::UInt32, cone::Cone,
+    binary::B, n_levels::UInt32, resolution::UInt32,
 ) where {
-    S <: AbstractMatrix{UInt32},
+    S <: AbstractVector{SVector{3, UInt32}},
     K <: AbstractVector{UInt32},
     R <: AbstractVector{RenderRay},
     B <: AbstractVector{UInt8},
@@ -114,14 +141,13 @@ end
     rray = rays[i]
 
     ray = Ray(origin, rray.direction)
-    alive, new_t, steps = trace_ray!(
+    _, _, steps = trace_ray!(
         nothing, ray, rray.t, max_samples, cone, bbox,
         binary, n_levels, resolution)
-    rays[i] = RenderRay(rray; t=new_t, steps=rray.steps + steps, alive)
     if steps > 0
         offset, _ = @atomic steps_counter[0x1] + steps
         _, ray_idx = @atomic rays_counter[0x1] + 0x1
-        span[ray_idx] = SVector{2, UInt32}(offset, steps)
+        span[ray_idx] = SVector{3, UInt32}(offset, steps, i)
     end
 end
 
@@ -157,7 +183,7 @@ end
     idx = x + (y - 0x1) * intrinsics.resolution[1]
 
     ray = Ray(xy, rotation, translation, intrinsics)
-    t_start = max((bbox ∩ ray)[1], near)
+    t_start = max(0f0, (bbox ∩ ray)[1]) + near
 
     is_alive = !isinf(t_start) && (ray(t_start) ∈ bbox)
     rays[idx] = RenderRay(ray.direction, t_start, idx, UInt32(0), is_alive)

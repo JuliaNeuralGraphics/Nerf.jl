@@ -47,8 +47,13 @@
             t = ((point .- origin) ./ direction)[1]
 
             valid_samples &= norm(direction) ≈ 1f0
-            valid_samples &= t > 0f0
-            valid_samples &= isapprox(Nerf.Ray(origin, direction)(t), point; atol=1f-3)
+            valid_samples || @error "invalid norm: $(norm(direction))"
+            valid_samples &= t ≥ 0f0
+            valid_samples || @error "invalid t: $t"
+            np = Nerf.Ray(origin, direction)(t)
+            valid_samples &= isapprox(np, point; atol=1f-3, rtol=1f-3)
+            valid_samples || @error "invalid ray point: $np vs $point"
+
             valid_samples || break
 
             total_steps += 1
@@ -56,5 +61,5 @@
         valid_samples || break
     end
     @test valid_samples
-    @test total_steps == bundle.n_samples
+    @test total_steps == Int(bundle.n_samples)
 end

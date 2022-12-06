@@ -30,17 +30,16 @@ end
     R <: AbstractMatrix{Float32},
     K <: AbstractVector{SVector{3, Float32}},
     I <: AbstractVector{UInt32},
-    S <: AbstractVector{SVector{4, UInt32}},
+    S <: AbstractVector{SVector{3, UInt32}},
     D <: AbstractVector{Float32},
 }
     @uniform scale::Float32 = 1f0 / n_rays
 
     i::UInt32 = @index(Global)
+    ξ = Ξ[i]
     image_idx = image_indices[i]
     ray_span = span[i]
-    offset, steps, idx = ray_span[1], ray_span[2], ray_span[4]
-    # TODO use recombined
-    ξ = Ξ[idx]
+    offset, steps = ray_span[1], ray_span[2]
 
     composed_rgb, composed_steps = alpha_compose!(nothing, rgba, offset, steps, deltas)
     target_rgb = sample(images, SVector{2, Float32}(ξ[1], ξ[2]), image_idx)

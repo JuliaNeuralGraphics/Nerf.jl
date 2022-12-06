@@ -1,7 +1,7 @@
 struct RayBundle{
     R <: AbstractVector{SVector{3, Float32}},
     I <: AbstractVector{UInt32},
-    S <: AbstractVector{SVector{4, UInt32}},
+    S <: AbstractVector{SVector{3, UInt32}},
     K <: AbstractVector{SVector{3, Float32}},
 }
     directions::R
@@ -20,7 +20,7 @@ end
 function RayBundle(dev; n_rays::Int)
     directions = similar(dev, SVector{3, Float32}, (n_rays,))
     image_indices = similar(dev, UInt32, (n_rays,))
-    span = similar(dev, SVector{4, UInt32}, (n_rays,))
+    span = similar(dev, SVector{3, UInt32}, (n_rays,))
     # 3 random number per ray: 2 - ray pixel, 1 - ray time offset.
     Ξ = reinterpret(SVector{3, Float32}, rand(dev, Float32, (3 * n_rays,)))
     RayBundle(directions, image_indices, span, Ξ, zero(UInt32))
@@ -35,6 +35,7 @@ function RayBundle(
 }
     dev = get_device(occupancy)
     bundle = RayBundle(dev; n_rays)
+    Ξ = similar(dev, SVector{3, Float32}, (n_rays,))
 
     steps_counter = zeros(dev, UInt32, (1,))
     rays_counter = zeros(dev, UInt32, (1,))
@@ -42,7 +43,7 @@ function RayBundle(
     resolution::UInt32 = get_resolution(occupancy)
     n_levels::UInt32 = get_n_levels(occupancy)
     wait(generate_ray_bundle!(dev)(
-        bundle, steps_counter, rays_counter,
+        Ξ, bundle, steps_counter, rays_counter,
         cone, bbox, rotations, translations, intrinsics,
         occupancy.binary, n_levels, resolution; ndrange=n_rays))
 
@@ -53,12 +54,10 @@ function RayBundle(
     if rc != n_rays
         bundle = RayBundle(
             bundle.directions[1:rc], bundle.image_indices[1:rc],
-            bundle.span[1:rc], bundle.Ξ, n_samples)
-            # bundle.span[1:rc], bundle.Ξ[1:rc], n_samples)
+            bundle.span[1:rc], Ξ[1:rc], n_samples)
     else
         bundle = RayBundle(
-            bundle.directions, bundle.image_indices, bundle.span,
-            bundle.Ξ, n_samples)
+            bundle.directions, bundle.image_indices, bundle.span, Ξ, n_samples)
     end
     bundle
 end
@@ -134,10 +133,11 @@ end
 end
 
 @kernel function generate_ray_bundle!(
-    bundle::RayBundle, steps_counter::C, rays_counter::C, cone::Cone, bbox::BBox,
+    new_Ξ::K, bundle::RayBundle, steps_counter::C, rays_counter::C, cone::Cone, bbox::BBox,
     rotations::R, translations::T, intrinsics::CameraIntrinsics,
     binary::B, n_levels::UInt32, resolution::UInt32,
 ) where {
+    K <: AbstractVector{SVector{3, Float32}},
     C <: AbstractVector{UInt32},
     R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
     T <: AbstractVector{SVector{3, Float32}},
@@ -165,10 +165,9 @@ end
 
         bundle.image_indices[ray_idx] = image_idx
         bundle.directions[ray_idx] = ray.direction
-        bundle.span[ray_idx] = SVector{4, UInt32}(
-            offset, steps, reinterpret(UInt32, t_start), i)
-        # TODO recombine bundle.Ξ into new one:
-        # Ξ[ray_idx] = ξ
+        bundle.span[ray_idx] = SVector{3, UInt32}(
+            offset, steps, reinterpret(UInt32, t_start))
+        new_Ξ[ray_idx] = ξ
     end
 end
 
