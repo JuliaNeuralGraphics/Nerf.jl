@@ -120,10 +120,14 @@ function materialize(
     @show n_samples
     @assert n_samples > 0
 
-    # points = similar(dev, Float32, (3, n_samples))
-    # directions = similar(dev, Float32, (3, n_samples))
-    # TODO generate samples
-    # TODO update render rays as well
+    points = similar(dev, Float32, (3, n_samples))
+    directions = similar(dev, Float32, (3, n_samples))
+    wait(generate_render_samples!(dev)(
+        reinterpret(SVector{3, Float32}, reshape(points, :)),
+        reinterpret(SVector{3, Float32}, reshape(directions, :)),
+        span, rays, origin, r.bbox, UInt32(max_samples), r.cone,
+        occupancy.binary, n_levels, resolution; ndrange=length(rays)))
+    # TODO check points directions
 end
 
 @kernel function count_render_samples!(
@@ -149,6 +153,36 @@ end
         _, ray_idx = @atomic rays_counter[0x1] + 0x1
         span[ray_idx] = SVector{3, UInt32}(offset, steps, i)
     end
+end
+
+@kernel function generate_render_samples!(
+    points::S, directions::D,
+    span::P, rays::R, origin::SVector{3, Float32}, bbox::BBox,
+    max_samples::UInt32, cone::Cone,
+    binary::B, n_levels::UInt32, resolution::UInt32,
+) where {
+    S <: AbstractVector{SVector{3, Float32}},
+    D <: AbstractVector{SVector{3, Float32}},
+    P <: AbstractVector{SVector{3, UInt32}},
+    R <: AbstractVector{RenderRay},
+    B <: AbstractVector{UInt8},
+}
+    i = @index(Global)
+    ray_span = span[i]
+    offset, steps, idx = ray_span[1], ray_span[2], ray_span[3]
+
+    rray = rays[idx]
+    ray = Ray(origin, rray.direction)
+
+    @inline function consumer(point::SVector{3, Float32}, δ::Float32, step::UInt32)
+        write_idx = offset + step + 0x1
+        points[write_idx] = point
+        directions[write_idx] = rray.direction
+    end
+    alive, t, steps = trace_ray!(
+        consumer, ray, rray.t, max_samples, cone, bbox,
+        binary, n_levels, resolution)
+    rays[idx] = RenderRay(rray; alive, t, steps=rray.steps + steps)
 end
 
 @kernel function _compact!(
