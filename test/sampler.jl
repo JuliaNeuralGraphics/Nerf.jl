@@ -51,7 +51,7 @@
             valid_samples &= t ≥ 0f0
             valid_samples || @error "invalid t: $t"
             np = Nerf.Ray(origin, direction)(t)
-            valid_samples &= isapprox(np, point; atol=1f-3, rtol=1f-3)
+            valid_samples &= isapprox(np, point; atol=1f-2, rtol=1f-2)
             valid_samples || @error "invalid ray point: $np vs $point"
 
             valid_samples || break

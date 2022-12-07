@@ -97,6 +97,7 @@ function main()
     config_file = "/home/pxl-th/code/INGP.jl/data/raccoon_sofa2/transforms.json"
     dataset = Dataset(dev; config_file)
 
+    # TODO create test that reconstructs random image
     # images = adapt(Array, dataset.images)
     # width, height = size(images.data, 2), size(images.data, 3)
     # for i in 1:size(images.data, 4)
@@ -135,15 +136,14 @@ function main()
             @view(trainer.occupancy.density[:, :, :, level + 1]),
             density_level)
     end
-    @show sum(trainer.occupancy.binary)
     update_binary!(trainer.occupancy)
-    @show sum(trainer.occupancy.binary)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(camera, dataset.rotations_host[1], dataset.translations_host[1])
     renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
-    render!(renderer, trainer.occupancy)
-
+    render!(renderer, trainer.occupancy) do points, directions
+        model(points, directions)
+    end
     nothing
 end
 

@@ -18,7 +18,7 @@ function set_resolution!(c::Camera; width::Int, height::Int)
     c.intrinsics = CameraIntrinsics(c.intrinsics; resolution, focal)
 end
 
-get_resolution(c::Camera) = Int.(c.intrinsics.resolution)
+get_resolution(c::Camera) = tuple(Int.(c.intrinsics.resolution)...)
 
 function split_pose(c::Camera)
     rotation = SMatrix{3, 3, Float32, 9}(c.projection[1:3, 1:3])

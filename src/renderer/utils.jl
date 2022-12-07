@@ -7,8 +7,8 @@ struct RenderRay
 end
 
 @inline function RenderRay(
-    r::RenderRay; t::Float32 = r.t, steps::UInt32=r.steps,
-    alive::Bool = r.alive,
+    r::RenderRay; t::Float32 = r.t,
+    steps::UInt32 = r.steps, alive::Bool = r.alive,
 )
-    RenderRay(r.direction, t, r.idx, r.steps, alive)
+    RenderRay(r.direction, t, r.idx, steps, alive)
 end

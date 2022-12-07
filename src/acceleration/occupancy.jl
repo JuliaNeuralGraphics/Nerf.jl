@@ -77,8 +77,8 @@ function update!(
 
     tmp_density = zeros(dev, Float32, size(oc.density))
     wait(distribute_density!(dev)(
-        tmp_density, log_densities, indices, cone.min_stepsize;
-        ndrange=length(indices)))
+        reinterpret(UInt32, tmp_density), log_densities,
+        indices, cone.min_stepsize; ndrange=length(indices)))
     wait(ema_update!(dev)(
         oc.density, tmp_density, decay; ndrange=length(oc.density)))
 
@@ -153,13 +153,13 @@ end
 @kernel function distribute_density!(
     density::D, log_density::L, indices::I, min_cone_stepsize::Float32,
 ) where {
-    D <: AbstractArray{Float32, 4},
+    D <: AbstractArray{UInt32, 4},
     L <: AbstractVector{Float32},
     I <: AbstractVector{UInt32},
 }
     i::UInt32 = @index(Global)
     idx = indices[i]
-    σ = exp(log_density[i]) * min_cone_stepsize
+    σ = reinterpret(UInt32, exp(log_density[i]) * min_cone_stepsize)
     @atomic max(density[idx], σ)
 end
 
