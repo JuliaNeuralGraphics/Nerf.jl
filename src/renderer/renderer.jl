@@ -10,6 +10,7 @@ mutable struct Renderer
 
     tile_idx::Int
     tile_size::Int
+    n_tiles::Int
 end
 
 get_device(r::Renderer) = get_device(r.buffer)
@@ -20,7 +21,8 @@ function Renderer(
 )
     width, height = get_resolution(camera)
     buffer = RenderBuffer(dev; width, height)
-    Renderer(buffer, camera, bbox, cone, 0, tile_size)
+    n_tiles = ceil(Int, (width * height) / tile_size)
+    Renderer(buffer, camera, bbox, cone, 0, tile_size, n_tiles)
 end
 
 function reset!(r::Renderer)
@@ -29,28 +31,56 @@ function reset!(r::Renderer)
 end
 
 function advance_tile!(r::Renderer)
-    n_tiles = ceil(Int, prod(get_resolution(r.camera)) / r.tile_size)
-    r.tile_idx == n_tiles && error(
-        "Renderer is already at the last tile: $(r.tile_idx) / $(n_tiles).")
+    r.tile_idx == r.n_tiles && error(
+        "Renderer is already at the last tile: $(r.tile_idx) / $(r.n_tiles).")
     r.tile_idx += 1
 end
 
 function render!(
-    consumer, r::Renderer, occupancy::OccupancyGrid;
+    consumer, r::Renderer, occupancy::OccupancyGrid, train_bbox::BBox;
     max_steps::Int = 128, near::Float32 = 0.1f0,
     min_transmittance::Float32 = 1f-3,
 )
-    # FIXME this is needed to keep-up with freeing the resources.
-    # We should get rid of it.
-    GC.gc(false)
+    reset!(r)
+    for n_tile in 1:r.n_tiles
+        render_tile!(
+            consumer, r, occupancy, train_bbox;
+            max_steps, near, min_transmittance)
+        advance_tile!(r)
+    end
+end
 
+function render_tile!(
+    consumer, r::Renderer, occupancy::OccupancyGrid, train_bbox::BBox;
+    max_steps::Int = 128, near::Float32 = 0.1f0,
+    min_transmittance::Float32 = 1f-3,
+)
     rays = init_rays(r, occupancy; near)
-    trace(consumer, r, rays, occupancy; max_steps, min_transmittance)
-    """
-    - shade
-    - accumulate
-    """
+    hit_ids, hit_rgba = trace(
+        consumer, r, rays, occupancy, train_bbox;
+        max_steps, min_transmittance)
+
+    if !isempty(hit_ids)
+        offset::UInt32 = r.tile_idx * r.tile_size
+        wait(shade!(get_device(r.buffer))(
+            r.buffer.buffer, hit_ids, hit_rgba, offset; ndrange=length(hit_ids)))
+        CUDA.synchronize()
+        # TODO accumulate (only when spp > 1)
+    end
     nothing
+end
+
+@kernel function shade!(
+    buffer::B, hit_ids::I, hit_rgba::C, offset::UInt32,
+) where {
+    B <: AbstractMatrix{SVector{4, Float32}},
+    I <: AbstractVector{UInt32},
+    C <: AbstractVector{SVector{4, Float32}},
+}
+    i::UInt32 = @index(Global)
+    idx = hit_ids[i] + offset
+    rgba = hit_rgba[i]
+    buffer[idx] = rgba .+ buffer[idx] .* (1f0 - rgba[4])
 end
 
 function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
@@ -58,23 +88,27 @@ function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
     width, height = get_resolution(r.camera)
     rotation, translation = split_pose(r.camera)
 
-    n_rays = min(r.tile_size, width * height)
-    rays = similar(dev, RenderRay, (n_rays,))
+    n_pixels = width * height
     offset::UInt32 = r.tile_idx * r.tile_size
+    n_rays = min(r.tile_size, min(n_pixels, n_pixels - offset))
+    @assert n_rays > 0
+    rays = similar(dev, RenderRay, (n_rays,))
     wait(init_rays!(dev)(
         rays, offset, r.bbox, rotation, translation, r.camera.intrinsics,
         near; ndrange=n_rays))
+    CUDA.synchronize()
 
     n_levels::UInt32 = get_n_levels(occupancy)
     resolution::UInt32 = get_resolution(occupancy)
     wait(init_advance!(dev)(
         rays, translation, r.cone, r.bbox,
         occupancy.binary, n_levels, resolution; ndrange=n_rays))
+    CUDA.synchronize()
     rays
 end
 
 function trace(
-    consumer, r::Renderer, rays::R, occupancy::OccupancyGrid;
+    consumer, r::Renderer, rays::R, occupancy::OccupancyGrid, train_bbox::BBox;
     max_steps::Int, min_transmittance::Float32,
 ) where R <: AbstractVector{RenderRay}
     dev = get_device(r)
@@ -85,35 +119,34 @@ function trace(
     fill!(reinterpret(Float32, rgba), 0f0)
 
     hit_counter = zeros(dev, UInt32, (1,))
+    # Maximum number of ray samples before recompaction:
+    # alive rays are adjacent.
     max_samples = 8
 
-    for step in 1:max_steps
-        @show step
-        GC.gc(false)
-
+    for _ in 1:max_steps
         rays, rgba = compact(
             hit_ids, hit_rgba, rays, rgba; hit_counter, min_transmittance)
-        @show length(rays)
         length(rays) == 0 && break
-        GC.gc(false)
 
-        samples, span = materialize(r, rays, occupancy; max_samples)
-        points = reshape(reinterpret(Float32, samples.points), 3, :)
-        directions = reshape(reinterpret(Float32, samples.directions), 3, :)
-        step_rgba = consumer(points, directions)
-        GC.gc(false)
-        @show length(rgba)
-        @show length(step_rgba)
+        samples, span = materialize(r, rays, occupancy, train_bbox; max_samples)
+        length(samples) == 0 && break
+
+        step_rgba = consumer(
+            reshape(reinterpret(Float32, samples.points), 3, :),
+            reshape(reinterpret(Float32, samples.directions), 3, :))
         wait(compose!(dev)(
             rgba, span,
             reinterpret(SVector{4, Float32}, reshape(step_rgba, :)),
             samples.deltas; ndrange=length(rays)))
+        CUDA.synchronize()
     end
+
+    n_hit = Array{Int}(hit_counter)[1]
+    n_hit == length(hit_ids) && return hit_ids, hit_rgba
+    return hit_ids[1:n_hit], hit_rgba[1:n_hit]
 end
 
-@kernel function compose!(
-    rgba::C, span::S, step_rgba::G, deltas::D,
-) where {
+@kernel function compose!(rgba::C, span::S, step_rgba::G, deltas::D) where {
     C <: AbstractVector{SVector{4, Float32}},
     S <: AbstractVector{SVector{3, UInt32}},
     G <: AbstractVector{SVector{4, Float32}},
@@ -124,7 +157,6 @@ end
     offset, steps, idx = ray_span[1], ray_span[2], ray_span[3]
 
     local_rgba = MVector{4, Float32}(rgba[idx])
-
     for step in UnitRange{UInt32}(UInt32(1), steps)
         read_idx = offset + step
         rgb, log_σ = to_rgb_a(step_rgba[read_idx])
@@ -136,10 +168,10 @@ end
         ω = α * T
 
         rgb = rgb .* ω
-        local_rgba[1] = rgb[1]
-        local_rgba[2] = rgb[2]
-        local_rgba[3] = rgb[3]
-        local_rgba[4] = ω
+        local_rgba[1] += rgb[1]
+        local_rgba[2] += rgb[2]
+        local_rgba[3] += rgb[3]
+        local_rgba[4] += ω
     end
     rgba[idx] = local_rgba
 end
@@ -160,6 +192,7 @@ function compact(
     wait(_compact!(dev)(
         alive_rays, alive_rgba, hit_ids, hit_rgba, rays, rgba,
         min_transmittance, alive_counter, hit_counter; ndrange=length(rays)))
+    CUDA.synchronize()
 
     n_alive = Array{Int}(alive_counter)[1]
     n_alive == length(rays) && return alive_rays, alive_rgba
@@ -167,7 +200,8 @@ function compact(
 end
 
 function materialize(
-    r::Renderer, rays::R, occupancy::OccupancyGrid; max_samples::Int,
+    r::Renderer, rays::R, occupancy::OccupancyGrid,
+    train_bbox::BBox; max_samples::Int,
 ) where R <: AbstractVector{RenderRay}
     dev = device_from_type(R)
     span = similar(dev, SVector{3, UInt32}, (length(rays),))
@@ -180,24 +214,25 @@ function materialize(
     resolution::UInt32 = get_resolution(occupancy)
     wait(count_render_samples!(dev)(
         span, steps_counter, rays_counter,
-        rays, origin, r.bbox, UInt32(max_samples), r.cone,
+        rays, origin, r.bbox, r.cone, UInt32(max_samples),
         occupancy.binary, n_levels, resolution; ndrange=length(rays)))
+    @assert Array{Int}(rays_counter)[1] == length(rays)
+    CUDA.synchronize()
 
     n_samples = Array{Int}(steps_counter)[1]
-    @show n_samples
-    @assert n_samples > 0
-
     samples = RaySamples(dev; n_samples)
     wait(generate_render_samples!(dev)(
-        samples, span, rays, origin, r.bbox, UInt32(max_samples), r.cone,
-        occupancy.binary, n_levels, resolution; ndrange=length(rays)))
+        samples, span, rays, origin, r.bbox, train_bbox, r.cone,
+        UInt32(max_samples), occupancy.binary, n_levels, resolution;
+        ndrange=length(rays)))
+    CUDA.synchronize()
     samples, span
 end
 
 @kernel function count_render_samples!(
     span::S, steps_counter::K, rays_counter::K,
-    rays::R, origin::SVector{3, Float32}, bbox::BBox,
-    max_samples::UInt32, cone::Cone,
+    rays::R, origin::SVector{3, Float32},
+    bbox::BBox, cone::Cone, max_samples::UInt32,
     binary::B, n_levels::UInt32, resolution::UInt32,
 ) where {
     S <: AbstractVector{SVector{3, UInt32}},
@@ -212,16 +247,15 @@ end
     _, _, steps = trace_ray!(
         nothing, ray, rray.t, max_samples, cone, bbox,
         binary, n_levels, resolution)
-    if steps > 0
-        offset, _ = @atomic steps_counter[0x1] + steps
-        _, ray_idx = @atomic rays_counter[0x1] + 0x1
-        span[ray_idx] = SVector{3, UInt32}(offset, steps, i)
-    end
+
+    offset, _ = @atomic steps_counter[0x1] + steps
+    _, ray_idx = @atomic rays_counter[0x1] + 0x1
+    span[ray_idx] = SVector{3, UInt32}(offset, steps, i)
 end
 
 @kernel function generate_render_samples!(
     samples::RaySamples, span::P, rays::R, origin::SVector{3, Float32},
-    bbox::BBox, max_samples::UInt32, cone::Cone,
+    bbox::BBox, train_bbox::BBox, cone::Cone,  max_samples::UInt32,
     binary::B, n_levels::UInt32, resolution::UInt32,
 ) where {
     P <: AbstractVector{SVector{3, UInt32}},
@@ -237,7 +271,7 @@ end
 
     @inline function consumer(point::SVector{3, Float32}, δ::Float32, step::UInt32)
         write_idx = offset + step + 0x1
-        samples.points[write_idx] = point
+        samples.points[write_idx] = relative_position(train_bbox, point)
         samples.directions[write_idx] = rray.direction
         samples.deltas[write_idx] = δ
     end
@@ -262,6 +296,7 @@ end
         _, idx = @atomic alive_counter[0x1] + 0x1
         alive_rays[idx] = ray
         alive_rgba[idx] = c
+    # TODO what if last iteration, alive but very visible?
     elseif c[4] > min_transmittance
         _, idx = @atomic hit_counter[0x1] + 0x1
         hit_ids[idx] = ray.idx
@@ -275,7 +310,7 @@ end
     intrinsics::CameraIntrinsics, near::Float32,
 ) where R <: AbstractVector{RenderRay}
     i::UInt32 = @index(Global)
-    idx = (i - 0x1) + offset
+    idx = i - 0x1 + offset
     x::UInt32 = idx % intrinsics.resolution[1]
     y::UInt32 = idx ÷ intrinsics.resolution[1]
     xy = SVector{2, Float32}(x, y) ./ intrinsics.resolution

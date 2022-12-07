@@ -37,10 +37,6 @@ function reset!(t::Trainer)
 end
 
 function step!(t::Trainer)
-    # FIXME this is needed to keep-up with freeing the resources.
-    # We should get rid of it.
-    GC.gc(false)
-
     prepare!(t)
 
     bundle = RayBundle(

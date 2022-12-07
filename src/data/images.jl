@@ -26,6 +26,10 @@ function load_image(filename::String; target_size)
     frame
 end
 
+width(i::Images) = size(i.data, 2)
+
+height(i::Images) = size(i.data, 3)
+
 function raw_image(image)
     data = permutedims(Float32.(channelview(image)), (1, 3, 2))
     floor.(UInt8, data .* 255f0)
