@@ -93,11 +93,12 @@ include("models/basic.jl")
 @info "Device: $DEVICE"
 
 # TODO contrain parametric types in struct
+# TODO check that correct rngs are used between kernels
 
 function main()
     dev = DEVICE
-    config_file = "/home/pxl-th/code/INGP.jl/data/raccoon_sofa2/transforms.json"
-    # config_file = "/home/pxl-th/code/nerf-datasets/lego/transforms_train.json"
+    # config_file = "/home/pxl-th/code/INGP.jl/data/raccoon_sofa2/transforms.json"
+    config_file = "/home/pxl-th/code/nerf-datasets/ship/transforms_train.json"
     dataset = Dataset(dev; config_file)
 
     # TODO create test that reconstructs random image
@@ -124,11 +125,11 @@ function main()
         @show i, l
     end
 
-    # TODO create test out of this
+    # # TODO create test out of this
     # # Fill occupancy with cube at 0th level.
     # resolution = get_resolution(trainer.occupancy)
     # level_density = zeros(Float32, resolution, resolution, resolution)
-    # for level in 0:0 #3
+    # for level in 0:0
     #     fill!(level_density, 0f0)
     #     for i in 1:length(level_density)
     #         point = index_to_point(
@@ -144,17 +145,68 @@ function main()
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(
-        camera,
-        dataset.rotations_host[1],
+        camera, dataset.rotations_host[1],
         dataset.translations_host[1])
-    renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
-    render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
+    renderer = Renderer(dev, camera, trainer.bbox, trainer.cone; tile_size=512 * 512)
+    render!(renderer, trainer.occupancy, trainer.bbox; max_steps=128) do points, directions
         model(points, directions)
+        # vcat(
+        #     ones(dev, Float32, (3, size(points, 2))),
+        #     2f0 .* rand(dev, Float32, (1, size(points, 2))),
+        # )
     end
 
     save("image.png", RGB.(to_image(renderer.buffer)))
 
     nothing
 end
+
+# import INGP
+# function main2()
+#     ge = GridEncoding(DEVICE)
+#     ge2 = INGP.GridEncoding{Float32}(
+#         UInt32(3); device=INGP.DEVICE, interpolation=:smoothstep)
+
+#     θ = init(ge)
+#     θ2 = INGP.init(ge2)
+#     @assert length(θ) == length(θ2)
+
+#     n = 2048
+#     x = rand(DEVICE, Float32, (3, n))
+#     y, dy = ge(x, θ, Val{:IG}())
+#     y2, dy2 = ge2(x, θ, Val{:IG}())
+#     @assert y ≈ y2
+#     @assert dy ≈ dy2
+
+#     Δ = rand(DEVICE, Float32, (get_output_shape(ge)..., n))
+#     dx = ∇(ge, Δ, x, θ)
+#     dx2 = INGP.∇(ge2, Δ, x, θ)
+#     @assert dx ≈ dx2
+
+#     nothing
+# end
+
+# function main3()
+#     model = BasicModel(BasicField(DEVICE))
+
+#     θ2 = (;
+#         θ_ge=model.θ.θge,
+#         θ_density=model.θ.θdensity,
+#         θ_color=model.θ.θcolor)
+#     model2 = INGP.NerfModel(
+#         INGP.NerfNN(INGP.DEVICE),
+#         θ2,
+#         INGP.Adam(θ2, INGP.DEVICE; lr=1f-2)
+#     )
+
+#     n = 2048
+#     p = rand(DEVICE, Float32, (3, n))
+#     d = rand(DEVICE, Float32, (3, n))
+#     y = model(p, d)
+#     y2 = model2(p, (d .+ 1f0) .* 0.5f0)
+#     @assert y ≈ y2
+
+#     nothing
+# end
 
 end

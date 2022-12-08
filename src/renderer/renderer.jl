@@ -17,7 +17,7 @@ get_device(r::Renderer) = get_device(r.buffer)
 
 function Renderer(
     dev, camera::Camera, bbox::BBox, cone::Cone;
-    tile_size::Int = 128 * 128,
+    tile_size::Int = 256 * 256,
 )
     width, height = get_resolution(camera)
     buffer = RenderBuffer(dev; width, height)
@@ -38,21 +38,38 @@ end
 
 function render!(
     consumer, r::Renderer, occupancy::OccupancyGrid, train_bbox::BBox;
-    max_steps::Int = 128, near::Float32 = 0.1f0,
+    max_steps::Int = 128, near::Float32 = 1f-2,
     min_transmittance::Float32 = 1f-3,
 )
     reset!(r)
-    for n_tile in 1:r.n_tiles
+    # width, height = get_resolution(r.camera)
+    # img = zeros(DEVICE, Float32, (width, height))
+    for _ in 1:r.n_tiles
         render_tile!(
             consumer, r, occupancy, train_bbox;
             max_steps, near, min_transmittance)
+
+        # n_pixels = width * height
+        # offset::UInt32 = r.tile_idx * r.tile_size
+        # n_rays = min(r.tile_size, min(n_pixels, n_pixels - offset))
+        # wait(debug_init!(DEVICE)(
+        #     img, offset, r.camera.intrinsics; ndrange=n_rays))
         advance_tile!(r)
     end
+    # save("debug.png", colorview(Gray{Float32}, Array(img)))
+end
+
+@kernel function debug_init!(img, offset::UInt32, intrinsics::CameraIntrinsics)
+    i::UInt32 = @index(Global)
+    idx = i - 0x1 + offset
+    x::UInt32 = idx % intrinsics.resolution[1]
+    y::UInt32 = idx ÷ intrinsics.resolution[1]
+    img[x + 0x1, y + 0x1] = idx / (intrinsics.resolution[1] * intrinsics.resolution[2])
 end
 
 function render_tile!(
     consumer, r::Renderer, occupancy::OccupancyGrid, train_bbox::BBox;
-    max_steps::Int = 128, near::Float32 = 0.1f0,
+    max_steps::Int = 128, near::Float32 = 1f-2,
     min_transmittance::Float32 = 1f-3,
 )
     rays = init_rays(r, occupancy; near)
@@ -64,7 +81,6 @@ function render_tile!(
         offset::UInt32 = r.tile_idx * r.tile_size
         wait(shade!(get_device(r.buffer))(
             r.buffer.buffer, hit_ids, hit_rgba, offset; ndrange=length(hit_ids)))
-        CUDA.synchronize()
         # TODO accumulate (only when spp > 1)
     end
     nothing
@@ -91,19 +107,18 @@ function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
     n_pixels = width * height
     offset::UInt32 = r.tile_idx * r.tile_size
     n_rays = min(r.tile_size, min(n_pixels, n_pixels - offset))
+    @show r.tile_idx, Int(offset), n_rays, r.tile_size
     @assert n_rays > 0
     rays = similar(dev, RenderRay, (n_rays,))
     wait(init_rays!(dev)(
         rays, offset, r.bbox, rotation, translation, r.camera.intrinsics,
         near; ndrange=n_rays))
-    CUDA.synchronize()
 
     n_levels::UInt32 = get_n_levels(occupancy)
     resolution::UInt32 = get_resolution(occupancy)
     wait(init_advance!(dev)(
         rays, translation, r.cone, r.bbox,
         occupancy.binary, n_levels, resolution; ndrange=n_rays))
-    CUDA.synchronize()
     rays
 end
 
@@ -123,22 +138,29 @@ function trace(
     # alive rays are adjacent.
     max_samples = 8
 
-    for _ in 1:max_steps
+    # c1 = rand(Float32)
+    # c2 = rand(Float32)
+    # c3 = rand(Float32)
+
+    for j in 1:max_steps
         rays, rgba = compact(
             hit_ids, hit_rgba, rays, rgba; hit_counter, min_transmittance)
         length(rays) == 0 && break
 
         samples, span = materialize(r, rays, occupancy, train_bbox; max_samples)
-        length(samples) == 0 && break
+        length(samples) == 0 && continue
 
         step_rgba = consumer(
             reshape(reinterpret(Float32, samples.points), 3, :),
             reshape(reinterpret(Float32, samples.directions), 3, :))
+        # step_rgba[1, :] .= c1
+        # step_rgba[2, :] .= c2
+        # step_rgba[3, :] .= c3
+
         wait(compose!(dev)(
             rgba, span,
             reinterpret(SVector{4, Float32}, reshape(step_rgba, :)),
             samples.deltas; ndrange=length(rays)))
-        CUDA.synchronize()
     end
 
     n_hit = Array{Int}(hit_counter)[1]
@@ -155,25 +177,26 @@ end
     i::UInt32 = @index(Global)
     ray_span = span[i]
     offset, steps, idx = ray_span[1], ray_span[2], ray_span[3]
+    if steps > 0
+        local_rgba = MVector{4, Float32}(rgba[idx])
+        for step in UnitRange{UInt32}(UInt32(1), steps)
+            read_idx = offset + step
+            rgb, log_σ = to_rgb_a(step_rgba[read_idx])
+            σ = exp(log_σ)
+            δ = deltas[read_idx]
 
-    local_rgba = MVector{4, Float32}(rgba[idx])
-    for step in UnitRange{UInt32}(UInt32(1), steps)
-        read_idx = offset + step
-        rgb, log_σ = to_rgb_a(step_rgba[read_idx])
-        σ = exp(log_σ)
-        δ = deltas[read_idx]
+            T = 1f0 - local_rgba[4]
+            α = 1f0 - exp(-σ * δ)
+            ω = α * T
 
-        T = 1f0 - local_rgba[4]
-        α = 1f0 - exp(-σ * δ)
-        ω = α * T
-
-        rgb = rgb .* ω
-        local_rgba[1] += rgb[1]
-        local_rgba[2] += rgb[2]
-        local_rgba[3] += rgb[3]
-        local_rgba[4] += ω
+            rgb = rgb .* ω
+            local_rgba[1] += rgb[1]
+            local_rgba[2] += rgb[2]
+            local_rgba[3] += rgb[3]
+            local_rgba[4] += ω
+        end
+        rgba[idx] = local_rgba
     end
-    rgba[idx] = local_rgba
 end
 
 function compact(
@@ -192,7 +215,6 @@ function compact(
     wait(_compact!(dev)(
         alive_rays, alive_rgba, hit_ids, hit_rgba, rays, rgba,
         min_transmittance, alive_counter, hit_counter; ndrange=length(rays)))
-    CUDA.synchronize()
 
     n_alive = Array{Int}(alive_counter)[1]
     n_alive == length(rays) && return alive_rays, alive_rgba
@@ -217,15 +239,16 @@ function materialize(
         rays, origin, r.bbox, r.cone, UInt32(max_samples),
         occupancy.binary, n_levels, resolution; ndrange=length(rays)))
     @assert Array{Int}(rays_counter)[1] == length(rays)
-    CUDA.synchronize()
 
     n_samples = Array{Int}(steps_counter)[1]
     samples = RaySamples(dev; n_samples)
+    new_span = zeros(dev, UInt32, (length(rays), ))
     wait(generate_render_samples!(dev)(
-        samples, span, rays, origin, r.bbox, train_bbox, r.cone,
+        new_span, samples, span, rays, origin, r.bbox, train_bbox, r.cone,
         UInt32(max_samples), occupancy.binary, n_levels, resolution;
         ndrange=length(rays)))
-    CUDA.synchronize()
+    @assert sum(new_span) == n_samples
+    @assert new_span == reshape(reinterpret(UInt32, span), 3, :)[2, :]
     samples, span
 end
 
@@ -254,7 +277,7 @@ end
 end
 
 @kernel function generate_render_samples!(
-    samples::RaySamples, span::P, rays::R, origin::SVector{3, Float32},
+    new_span, samples::RaySamples, span::P, rays::R, origin::SVector{3, Float32},
     bbox::BBox, train_bbox::BBox, cone::Cone,  max_samples::UInt32,
     binary::B, n_levels::UInt32, resolution::UInt32,
 ) where {
@@ -275,10 +298,11 @@ end
         samples.directions[write_idx] = rray.direction
         samples.deltas[write_idx] = δ
     end
-    alive, t, steps = trace_ray!(
+    alive, t, new_steps = trace_ray!(
         consumer, ray, rray.t, max_samples, cone, bbox,
         binary, n_levels, resolution)
-    rays[idx] = RenderRay(rray; alive, t, steps=rray.steps + steps)
+    new_span[i] = new_steps
+    rays[idx] = RenderRay(rray; alive, t, steps=rray.steps + new_steps)
 end
 
 @kernel function _compact!(
@@ -296,7 +320,6 @@ end
         _, idx = @atomic alive_counter[0x1] + 0x1
         alive_rays[idx] = ray
         alive_rgba[idx] = c
-    # TODO what if last iteration, alive but very visible?
     elseif c[4] > min_transmittance
         _, idx = @atomic hit_counter[0x1] + 0x1
         hit_ids[idx] = ray.idx

@@ -59,7 +59,7 @@ function update!(
     points = similar(dev, SVector{3, Float32}, (n_samples,))
     indices = similar(dev, UInt32, (n_samples,))
     # 4 random number per point: 3 - random offset, 1 - random level.
-    Ξ = reinterpret(SVector{4, Float32}, rand(dev, Float32, (4 * n_samples,)))
+    Ξ = reinterpret(SVector{4, Float32}, rand(dev, Float32, (4 * (n_uniform + 1),)))
 
     gp_kernel = generate_points!(dev)
     wait(gp_kernel(
@@ -68,7 +68,7 @@ function update!(
     if n_non_uniform > 0
         offset = (n_uniform + 1):n_samples
         wait(gp_kernel(
-            @view(points[offset]), @view(indices[offset]), @view(Ξ[offset]),
+            @view(points[offset]), @view(indices[offset]), @view(Ξ[2:end]),
             density, bbox, threshold, UInt32(step); ndrange=n_non_uniform))
     end
 

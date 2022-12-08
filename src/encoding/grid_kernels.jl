@@ -17,7 +17,6 @@
     local_grid_position = MVector{NPD, UInt32}(undef)
     for idx in UnitRange{UInt32}(UInt32(0), (UInt32(1) << NPD) - 0x1)
         ω = 1f0
-
         for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
             if idx & (UInt32(1) << (dim - 0x1)) == 0x0
                 ω *= 1f0 - δposition[dim]
