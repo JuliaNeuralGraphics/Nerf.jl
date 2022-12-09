@@ -9,6 +9,8 @@ mutable struct Trainer{M}
     n_rays::Int
     occupancy_update_frequency::Int
     occupancy_decay::Float32
+
+    rng_state::UInt64
 end
 
 function Trainer(
@@ -27,13 +29,15 @@ function Trainer(
     bbox = get_bbox(dataset, n_levels)
     Trainer(
         model, dataset, occupancy, bbox, cone,
-        0, n_rays, occupancy_update_frequency, occupancy_decay)
+        0, n_rays, occupancy_update_frequency, occupancy_decay,
+        PCG_STATE)
 end
 
 function reset!(t::Trainer)
     reset!(t.model)
     reset!(t.occupancy)
     t.step = 0
+    t.rng_state = PCG_STATE
 end
 
 function step!(t::Trainer)
@@ -41,14 +45,18 @@ function step!(t::Trainer)
 
     bundle = RayBundle(
         t.occupancy, t.cone, t.bbox, t.dataset.rotations,
-        t.dataset.translations, t.dataset.intrinsics; n_rays=t.n_rays)
+        t.dataset.translations, t.dataset.intrinsics;
+        n_rays=t.n_rays, rng_state=t.rng_state)
     samples = materialize(bundle, t.occupancy, t.cone, t.bbox, t.dataset.translations)
 
     raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
     raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
     loss = step!(
         t.model, raw_points, raw_directions;
-        bundle, samples, images=t.dataset.images, n_rays=t.n_rays)
+        bundle, samples, images=t.dataset.images,
+        n_rays=t.n_rays, rng_state=t.rng_state)
+
+    t.rng_state = advance(t.rng_state)
     t.step += 1
     loss
 end
@@ -62,11 +70,10 @@ function prepare!(t::Trainer)
             rotations=t.dataset.rotations, translations=t.dataset.translations)
     end
 
-    decay::Float32 = t.occupancy_decay^(t.step / t.occupancy_update_frequency)
-    update!(
-        t.occupancy; cone=t.cone, bbox=t.bbox,
+    t.rng_state = update!(
+        t.occupancy; rng_state=t.rng_state, cone=t.cone, bbox=t.bbox,
         step=t.step, update_frequency=t.occupancy_update_frequency,
-        n_levels=get_n_levels(t.dataset), decay,
+        n_levels=get_n_levels(t.dataset), decay=t.occupancy_decay,
     ) do points
         batched_density(t.model, points; batch=512 * 512)
     end

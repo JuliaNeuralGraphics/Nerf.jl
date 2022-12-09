@@ -53,8 +53,8 @@ function _step!(opt::Adam, θ::T, ∇::G, i) where {
 end
 
 function _step!(opt::Adam, θ::T, ∇::T, i) where T <: AbstractArray
-    @assert !any(isnan.(θ)) "NaN parameters of size $(size(θ))"
-    @assert !any(isnan.(∇)) "NaN parameters of size $(size(∇))"
+    # @assert !any(isnan.(θ)) "NaN parameters of size $(size(θ))"
+    # @assert !any(isnan.(∇)) "NaN parameters of size $(size(∇))"
     size(θ) == size(∇) || error(
         "Shape of parameters and gradients must be the same, " *
         "but is instead `$(size(θ))` vs `$(size(∇))`.")

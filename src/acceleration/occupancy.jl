@@ -37,7 +37,7 @@ end
 
 # n_levels: 0-based
 function update!(
-    density_eval_fn, oc::OccupancyGrid;
+    density_eval_fn, oc::OccupancyGrid; rng_state::UInt64,
     cone::Cone, bbox::BBox, step::Int, update_frequency::Int, n_levels::Int,
     threshold::Float32 = 0.01f0, decay::Float32 = 0.95f0, warmup_steps::Int = 256,
 )
@@ -58,19 +58,19 @@ function update!(
     dev = get_device(oc)
     points = similar(dev, SVector{3, Float32}, (n_samples,))
     indices = similar(dev, UInt32, (n_samples,))
-    # 4 random number per point: 3 - random offset, 1 - random level.
-    Ξ = reinterpret(SVector{4, Float32}, rand(dev, Float32, (4 * (n_uniform + 1),)))
 
     gp_kernel = generate_points!(dev)
     wait(gp_kernel(
-        points, indices, Ξ, density, bbox,
+        points, indices, rng_state, density, bbox,
         -0.01f0, UInt32(step); ndrange=n_uniform))
+    rng_state = advance(rng_state)
     if n_non_uniform > 0
         offset = (n_uniform + 1):n_samples
         wait(gp_kernel(
-            @view(points[offset]), @view(indices[offset]), @view(Ξ[2:end]),
+            @view(points[offset]), @view(indices[offset]), rng_state,
             density, bbox, threshold, UInt32(step); ndrange=n_non_uniform))
     end
+    rng_state = advance(rng_state)
 
     raw_points = reshape(reinterpret(Float32, points), 3, :)
     log_densities = density_eval_fn(raw_points)
@@ -83,6 +83,7 @@ function update!(
         oc.density, tmp_density, decay; ndrange=length(oc.density)))
 
     update_binary!(oc; threshold)
+    return rng_state
 end
 
 function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
@@ -164,12 +165,11 @@ end
 end
 
 @kernel function generate_points!(
-    points::P, indices::I, Ξ::R, density::D,
+    points::P, indices::I, rng_state::UInt64, density::D,
     bbox::BBox, threshold::Float32, step::UInt32,
 ) where {
     P <: AbstractVector{SVector{3, Float32}},
     I <: AbstractVector{UInt32},
-    R <: AbstractVector{SVector{4, Float32}},
     D <: AbstractArray{Float32, 4},
 }
     @uniform resolution::UInt32 = size(density, 1)
@@ -178,10 +178,12 @@ end
     @uniform n_elements::UInt32 = @ndrange()[1]
 
     i::UInt32 = @index(Global)
-    ξ = Ξ[i]
-    δ = SVector{3, Float32}(ξ[1], ξ[2], ξ[3])
+    # 1 for level, 3 for offset, no overlap between threads.
+    rng_state = advance(rng_state, (i - 0x1) * 0x4)
+    ξ, rng_state = next_float(rng_state)
+    δ, rng_state = random_vec3f0(rng_state)
 
-    level::UInt32 = floor(UInt32, ξ[4] * n_levels) % n_levels
+    level::UInt32 = floor(UInt32, ξ * n_levels) % n_levels
     level_offset = level_length * level
 
     level_idx = zero(UInt32)
@@ -217,7 +219,7 @@ end
     res_scale::SVector{2, Float32},
 )
     @uniform resolution::UInt32 = size(density, 1)
-    @uniform level_length::UInt32 = prod(size(density)[1:3])
+    @uniform level_length::UInt32 = resolution^3
     @uniform n_images::UInt32 = length(rotations)
 
     i::UInt32 = @index(Global)
