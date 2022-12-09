@@ -97,6 +97,7 @@ include("models/basic.jl")
 # TODO check that correct rngs are used between kernels
 # TODO use steps from span in trace_ray!; check why it fails
 # TODO move rng_state into ray bundle?
+# TODO lr scheduler
 
 function main()
     dev = DEVICE
