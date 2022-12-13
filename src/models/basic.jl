@@ -123,13 +123,10 @@ function step!(
 ) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
-    l = 0f0
-    ∇ = Zygote.gradient(m.θ) do θ
+    loss, ∇ = Zygote.withgradient(m.θ) do θ
         rgba = m.field(points, directions, θ)
-        loss = photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
-        l = loss
-        loss
+        photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
     end
     step!(m.optimizer, m.θ, ∇[1])
-    l
+    loss
 end
