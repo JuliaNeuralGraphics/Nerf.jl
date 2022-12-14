@@ -98,26 +98,61 @@ include("models/basic.jl")
 # TODO move rng_state into ray bundle?
 # TODO lr scheduler
 
+# TODO create test that reconstructs random image
+# images = adapt(Array, dataset.images)
+# width, height = size(images.data, 2), size(images.data, 3)
+# for i in 1:size(images.data, 4)
+#     raw_img = similar(CPU(), SVector{3, Float32}, (width, height))
+#     for w in 1:width, h in 1:height
+#         raw_img[w, h] = sample(
+#             images,
+#             SVector{2, Float32}((w - 1) / width, (h - 1) / height),
+#             UInt32(i))
+#     end
+#     raw_img = reshape(reinterpret(Float32, raw_img), 3, width, height)
+#     img = colorview(RGB{Float32}, permutedims(raw_img, (1, 3, 2)))
+#     save("img-$i.png", img)
+# end
+
+# # TODO create test out of this
+# # Fill occupancy with cube at 0th level.
+# resolution = get_resolution(trainer.occupancy)
+# level_density = zeros(Float32, resolution, resolution, resolution)
+# for level in 0:0
+#     fill!(level_density, 0f0)
+#     for i in 1:length(level_density)
+#         point = index_to_point(
+#             UInt32(i - 1), UInt32(resolution), UInt32(level))
+#         idx = point_to_index(point, UInt32(resolution), UInt32(level))
+#         level_density[idx + 1] = 1f0
+#     end
+#     copy!(
+#         @view(trainer.occupancy.density[:, :, :, level + 1]),
+#         level_density)
+# end
+# update_binary!(trainer.occupancy)
+
+# camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
+# set_projection!(
+#     camera, dataset.rotations_host[10],
+#     dataset.translations_host[10])
+# renderer = Renderer(
+#     dev, camera, trainer.bbox, trainer.cone; tile_size=256 * 256)
+# render!(renderer, trainer.occupancy, trainer.bbox; max_steps=128) do points, directions
+#     model(points, directions)
+#     # ones(dev, Float32, (4, size(points, 2)))
+#     # vcat(
+#     #     ones(dev, Float32, (3, size(points, 2))),
+#     #     -2f0 .* rand(dev, Float32, (1, size(points, 2))),
+#     # )
+# end
+
+# save("image.png", RGB.(to_image(renderer.buffer)))
+
 function main()
     dev = DEVICE
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(dev; config_file)
-
-    # TODO create test that reconstructs random image
-    # images = adapt(Array, dataset.images)
-    # width, height = size(images.data, 2), size(images.data, 3)
-    # for i in 1:size(images.data, 4)
-    #     raw_img = similar(CPU(), SVector{3, Float32}, (width, height))
-    #     for w in 1:width, h in 1:height
-    #         raw_img[w, h] = sample(
-    #             images,
-    #             SVector{2, Float32}((w - 1) / width, (h - 1) / height),
-    #             UInt32(i))
-    #     end
-    #     raw_img = reshape(reinterpret(Float32, raw_img), 3, width, height)
-    #     img = colorview(RGB{Float32}, permutedims(raw_img, (1, 3, 2)))
-    #     save("img-$i.png", img)
-    # end
 
     model = BasicModel(BasicField(dev))
     trainer = Trainer(model, dataset; n_rays=1024, ray_steps=1024, n_levels=5)
@@ -143,41 +178,6 @@ function main()
             save("image-$i.png", RGB.(to_image(renderer.buffer)))
         end
     end
-
-    # # TODO create test out of this
-    # # Fill occupancy with cube at 0th level.
-    # resolution = get_resolution(trainer.occupancy)
-    # level_density = zeros(Float32, resolution, resolution, resolution)
-    # for level in 0:0
-    #     fill!(level_density, 0f0)
-    #     for i in 1:length(level_density)
-    #         point = index_to_point(
-    #             UInt32(i - 1), UInt32(resolution), UInt32(level))
-    #         idx = point_to_index(point, UInt32(resolution), UInt32(level))
-    #         level_density[idx + 1] = 1f0
-    #     end
-    #     copy!(
-    #         @view(trainer.occupancy.density[:, :, :, level + 1]),
-    #         level_density)
-    # end
-    # update_binary!(trainer.occupancy)
-
-    # camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    # set_projection!(
-    #     camera, dataset.rotations_host[10],
-    #     dataset.translations_host[10])
-    # renderer = Renderer(
-    #     dev, camera, trainer.bbox, trainer.cone; tile_size=256 * 256)
-    # render!(renderer, trainer.occupancy, trainer.bbox; max_steps=128) do points, directions
-    #     model(points, directions)
-    #     # ones(dev, Float32, (4, size(points, 2)))
-    #     # vcat(
-    #     #     ones(dev, Float32, (3, size(points, 2))),
-    #     #     -2f0 .* rand(dev, Float32, (1, size(points, 2))),
-    #     # )
-    # end
-
-    # save("image.png", RGB.(to_image(renderer.buffer)))
     nothing
 end
 
