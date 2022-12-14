@@ -367,7 +367,7 @@ version = "0.1.0"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "cf9cae1c4c1ff83f6c02cfaf01698f05448e8325"
+path = "/home/pxl-th/.julia/dev/KernelAbstractions"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 version = "0.8.6"
 
@@ -590,7 +590,7 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.ROCKernels]]
 deps = ["AMDGPU", "Adapt", "KernelAbstractions", "StaticArrays", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "7f04267c230db888636c5fe26cff2e874b32b3f4"
+path = "/home/pxl-th/.julia/dev/KernelAbstractions/lib/ROCKernels"
 uuid = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
 version = "0.3.2"
 

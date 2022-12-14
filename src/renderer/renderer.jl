@@ -42,7 +42,7 @@ function render!(
     min_transmittance::Float32 = 1f-3,
 )
     reset!(r)
-    for _ in 1:r.n_tiles
+    for tile_id in 1:r.n_tiles
         render_tile!(
             consumer, r, occupancy, train_bbox;
             max_steps, near, min_transmittance)
@@ -55,20 +55,20 @@ function render_tile!(
     max_steps::Int = 128, near::Float32 = 1f-2,
     min_transmittance::Float32 = 1f-3,
 )
+    GC.gc(false)
+
     rays = init_rays(r, occupancy; near)
     hit_ids, hit_rgba = trace(
         consumer, r, rays, occupancy, train_bbox;
         max_steps, min_transmittance)
-    unsafe_free!(rays)
 
     if !isempty(hit_ids)
         offset::UInt32 = r.tile_idx * r.tile_size
         wait(shade!(get_device(r.buffer))(
-            r.buffer.buffer, hit_ids, hit_rgba, offset; ndrange=length(hit_ids)))
+            r.buffer.buffer, hit_ids, hit_rgba, offset;
+            ndrange=length(hit_ids)))
         # TODO accumulate (only when spp > 1)
     end
-    unsafe_free!(hit_ids)
-    unsafe_free!(hit_rgba)
     nothing
 end
 
@@ -93,7 +93,6 @@ function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
     n_pixels = width * height
     offset::UInt32 = r.tile_idx * r.tile_size
     n_rays = min(r.tile_size, min(n_pixels, n_pixels - offset))
-    @assert n_rays > 0
     rays = similar(dev, RenderRay, (n_rays,))
     wait(init_rays!(dev)(
         rays, offset, r.bbox, rotation, translation, r.camera.intrinsics,
@@ -123,9 +122,9 @@ function trace(
     # alive rays are adjacent.
     max_samples = 8
 
-    for _ in 1:max_steps
-        # NOTE Since we update `rays` & `rgba`,
-        # we `unsafe_free!` old ones in `compact`.
+    for step in 1:max_steps
+        GC.gc(false)
+
         rays, rgba = compact(
             hit_ids, hit_rgba, rays, rgba;
             hit_counter, min_transmittance)
@@ -142,10 +141,6 @@ function trace(
             rgba, span,
             reinterpret(SVector{4, Float32}, reshape(step_rgba, :)),
             samples.deltas; ndrange=length(rays)))
-
-        unsafe_free!(step_rgba)
-        unsafe_free!(samples)
-        unsafe_free!(span)
     end
 
     n_hit = Array{Int}(hit_counter)[1]
@@ -153,8 +148,6 @@ function trace(
 
     trimmed_hit_ids = hit_ids[1:n_hit]
     trimmed_hit_rgba = hit_rgba[1:n_hit]
-    unsafe_free!(hit_ids)
-    unsafe_free!(hit_rgba)
     return trimmed_hit_ids, trimmed_hit_rgba
 end
 
@@ -207,16 +200,12 @@ function compact(
         min_transmittance, alive_counter, hit_counter; ndrange=length(rays)))
 
     n_rays = length(rays)
-    unsafe_free!(rays)
-    unsafe_free!(rgba)
 
     n_alive = Array{Int}(alive_counter)[1]
     n_alive == n_rays && return alive_rays, alive_rgba
 
     trimmed_rays = alive_rays[1:n_alive]
     trimmed_rgba = alive_rgba[1:n_alive]
-    unsafe_free!(alive_rays)
-    unsafe_free!(alive_rgba)
     return trimmed_rays, trimmed_rgba
 end
 
