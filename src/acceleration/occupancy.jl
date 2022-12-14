@@ -74,13 +74,18 @@ function update!(
 
     raw_points = reshape(reinterpret(Float32, points), 3, :)
     log_densities = density_eval_fn(raw_points)
+    unsafe_free!(points)
 
     tmp_density = zeros(dev, Float32, size(oc.density))
     wait(distribute_density!(dev)(
         reinterpret(UInt32, tmp_density), log_densities,
         indices, cone.min_stepsize; ndrange=length(indices)))
+
+    unsafe_free!(indices)
+    unsafe_free!(log_densities)
     wait(ema_update!(dev)(
         oc.density, tmp_density, decay; ndrange=length(oc.density)))
+    unsafe_free!(tmp_density)
 
     update_binary!(oc; threshold)
     return rng_state

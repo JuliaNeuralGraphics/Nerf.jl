@@ -75,7 +75,10 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
     for i in 1:n_iterations
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
-        σ[i_start:i_end] .= density(b, @view(points[:, i_start:i_end]), θ)
+
+        batch_σ = density(b, @view(points[:, i_start:i_end]), θ)
+        σ[i_start:i_end] .= batch_σ
+        unsafe_free!(batch_σ)
     end
     σ
 end
@@ -128,5 +131,6 @@ function step!(
         photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
     end
     step!(m.optimizer, m.θ, ∇[1])
+    # TODO free ∇
     loss
 end

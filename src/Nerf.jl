@@ -101,8 +101,8 @@ include("models/basic.jl")
 
 function main()
     dev = DEVICE
-    # config_file = "/home/pxl-th/code/INGP.jl/data/raccoon_sofa2/transforms.json"
-    config_file = "/home/pxl-th/code/nerf-datasets/lego/transforms_train.json"
+    config_file = "/home/pxl-th/code/INGP.jl/data/raccoon_sofa2/transforms.json"
+    # config_file = "/home/pxl-th/code/nerf-datasets/lego/transforms_train.json"
     dataset = Dataset(dev; config_file)
 
     # TODO create test that reconstructs random image
@@ -124,36 +124,38 @@ function main()
     model = BasicModel(BasicField(dev))
     trainer = Trainer(model, dataset; n_rays=1024, ray_steps=1024, n_levels=5)
 
-    for i in 1:(16 * 1000)
-        l = step!(trainer)
-        @show i, l
-    end
-
-    # # TODO create test out of this
-    # # Fill occupancy with cube at 0th level.
-    # resolution = get_resolution(trainer.occupancy)
-    # level_density = zeros(Float32, resolution, resolution, resolution)
-    # for level in 0:0
-    #     fill!(level_density, 0f0)
-    #     for i in 1:length(level_density)
-    #         point = index_to_point(
-    #             UInt32(i - 1), UInt32(resolution), UInt32(level))
-    #         idx = point_to_index(point, UInt32(resolution), UInt32(level))
-    #         level_density[idx + 1] = 1f0
-    #     end
-    #     copy!(
-    #         @view(trainer.occupancy.density[:, :, :, level + 1]),
-    #         level_density)
+    # for i in 1:(16 * 20)
+    #     l = step!(trainer)
+    #     @show i, l
     # end
-    # update_binary!(trainer.occupancy)
+
+    # TODO create test out of this
+    # Fill occupancy with cube at 0th level.
+    resolution = get_resolution(trainer.occupancy)
+    level_density = zeros(Float32, resolution, resolution, resolution)
+    for level in 0:0
+        fill!(level_density, 0f0)
+        for i in 1:length(level_density)
+            point = index_to_point(
+                UInt32(i - 1), UInt32(resolution), UInt32(level))
+            idx = point_to_index(point, UInt32(resolution), UInt32(level))
+            level_density[idx + 1] = 1f0
+        end
+        copy!(
+            @view(trainer.occupancy.density[:, :, :, level + 1]),
+            level_density)
+    end
+    update_binary!(trainer.occupancy)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(
         camera, dataset.rotations_host[10],
         dataset.translations_host[10])
-    renderer = Renderer(dev, camera, trainer.bbox, trainer.cone; tile_size=512 * 512)
+    renderer = Renderer(
+        dev, camera, trainer.bbox, trainer.cone; tile_size=128 * 128)
     render!(renderer, trainer.occupancy, trainer.bbox; max_steps=128) do points, directions
-        model(points, directions)
+        # model(points, directions)
+        ones(dev, Float32, (4, size(points, 2)))
         # vcat(
         #     ones(dev, Float32, (3, size(points, 2))),
         #     -2f0 .* rand(dev, Float32, (1, size(points, 2))),

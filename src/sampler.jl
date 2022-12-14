@@ -51,18 +51,26 @@ function RayBundle(
     @assert rc > 0
 
     if rc != n_rays
-        bundle = RayBundle(
+        trimmed_bundle = RayBundle(
             bundle.directions[1:rc], bundle.thread_indices[1:rc],
             bundle.image_indices[1:rc], bundle.span[1:rc], n_samples)
+        unsafe_free!(bundle)
     else
-        bundle = RayBundle(
+        trimmed_bundle = RayBundle(
             bundle.directions, bundle.thread_indices, bundle.image_indices,
             bundle.span, n_samples)
     end
-    bundle
+    trimmed_bundle
 end
 
 Base.length(b::RayBundle) = length(b.directions)
+
+function KAUtils.unsafe_free!(b::RayBundle)
+    unsafe_free!(b.span)
+    unsafe_free!(b.directions)
+    unsafe_free!(b.image_indices)
+    unsafe_free!(b.thread_indices)
+end
 
 struct RaySamples{
     P <: AbstractVector{SVector{3, Float32}},
@@ -88,6 +96,12 @@ function RaySamples(dev; n_samples::Int)
 end
 
 Base.length(s::RaySamples) = length(s.points)
+
+function KAUtils.unsafe_free!(s::RaySamples)
+    unsafe_free!(s.points)
+    unsafe_free!(s.directions)
+    unsafe_free!(s.deltas)
+end
 
 function materialize(
     bundle::RayBundle, occupancy::OccupancyGrid,

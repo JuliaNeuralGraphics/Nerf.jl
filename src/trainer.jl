@@ -41,6 +41,8 @@ function reset!(t::Trainer)
 end
 
 function step!(t::Trainer)
+    GC.gc(false)
+
     prepare!(t)
 
     bundle = RayBundle(
@@ -55,6 +57,9 @@ function step!(t::Trainer)
         t.model, raw_points, raw_directions;
         bundle, samples, images=t.dataset.images,
         n_rays=t.n_rays, rng_state=t.rng_state)
+
+    unsafe_free!(bundle)
+    unsafe_free!(samples)
 
     t.rng_state = advance(t.rng_state)
     t.step += 1

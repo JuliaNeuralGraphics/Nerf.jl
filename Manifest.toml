@@ -2,11 +2,13 @@
 
 julia_version = "1.9.0-alpha1"
 manifest_format = "2.0"
-project_hash = "2e046384efb32161f5395c702152914a9096d40e"
+project_hash = "1d124042f35de0e5c0dc46a30624d4759c2b072c"
 
 [[deps.AMDGPU]]
 deps = ["AbstractFFTs", "Adapt", "BinaryProvider", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "HIP_jll", "LLD_jll", "LLVM", "LLVM_jll", "Libdl", "LinearAlgebra", "MacroTools", "Pkg", "Preferences", "Printf", "ROCmDeviceLibs_jll", "Random", "Requires", "Setfield", "SpecialFunctions", "Statistics", "hsa_rocr_jll", "rocBLAS_jll", "rocRAND_jll", "rocSPARSE_jll"]
-git-tree-sha1 = "4d31e0107d0d07bf364d86cf742452bf7e28ac29"
+git-tree-sha1 = "f3a80563258d087b8269298eeab013b3f955e3c5"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaGPU/AMDGPU.jl.git"
 uuid = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 version = "0.4.4"
 
@@ -117,9 +119,9 @@ version = "0.9.9"
 
 [[deps.Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
-git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
+git-tree-sha1 = "73e9c4144410f6b11f2f818488728d3afd60943c"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
-version = "0.12.8"
+version = "0.12.9"
 
 [[deps.CommonSubexpressions]]
 deps = ["MacroTools", "Test"]
@@ -225,9 +227,9 @@ version = "0.8.4"
 
 [[deps.ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "187198a4ed8ccd7b5d99c41b69c679269ea2b2d4"
+git-tree-sha1 = "a69dd6db8a809f78846ff259298678f0d6212180"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.10.32"
+version = "0.10.34"
 
 [[deps.Future]]
 deps = ["Random"]
@@ -305,9 +307,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[deps.Interpolations]]
 deps = ["Adapt", "AxisAlgorithms", "ChainRulesCore", "LinearAlgebra", "OffsetArrays", "Random", "Ratios", "Requires", "SharedArrays", "SparseArrays", "StaticArrays", "WoodburyMatrices"]
-git-tree-sha1 = "842dd89a6cb75e02e85fdd75c760cdc43f5d6863"
+git-tree-sha1 = "721ec2cf720536ad005cb38f50dbba7b02419a15"
 uuid = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
-version = "0.14.6"
+version = "0.14.7"
 
 [[deps.InverseFunctions]]
 deps = ["Test"]
@@ -357,7 +359,7 @@ version = "0.9.18"
 
 [[deps.KAUtils]]
 deps = ["AMDGPU", "CUDA", "CUDAKernels", "KernelAbstractions", "Preferences", "ROCKernels"]
-git-tree-sha1 = "d8a72b54b4316eae43250e4cdc9690af79e6d594"
+git-tree-sha1 = "21980a4649c01dbf549527fe61f8e680274aa833"
 repo-rev = "main"
 repo-url = "https://github.com/JuliaNeuralGraphics/KAUtils.jl.git"
 uuid = "4cf630bc-e32e-42c7-b2ec-6fcca2f230db"
@@ -444,9 +446,9 @@ version = "1.42.0+0"
 
 [[deps.Libiconv_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "42b62845d70a619f063a7da093d995ec8e15e778"
+git-tree-sha1 = "c7cb1f5d892775ba13767a87c7ada0b980ea0a71"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.16.1+1"
+version = "1.16.1+2"
 
 [[deps.Libtiff_jll]]
 deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "LERC_jll", "Libdl", "Pkg", "Zlib_jll", "Zstd_jll"]
@@ -557,9 +559,9 @@ version = "0.5.11"
 
 [[deps.Parsers]]
 deps = ["Dates", "SnoopPrecompile"]
-git-tree-sha1 = "b64719e8b4504983c7fca6cc9db3ebc8acc2a4d6"
+git-tree-sha1 = "6466e524967496866901a78fca3f2e9ea445a559"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.5.1"
+version = "2.5.2"
 
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -719,10 +721,10 @@ uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 version = "1.9.0"
 
 [[deps.StructArrays]]
-deps = ["Adapt", "DataAPI", "StaticArraysCore", "Tables"]
-git-tree-sha1 = "13237798b407150a6d2e2bce5d793d7d9576e99e"
+deps = ["Adapt", "DataAPI", "GPUArraysCore", "StaticArraysCore", "Tables"]
+git-tree-sha1 = "b03a3b745aa49b566f128977a7dd1be8711c5e71"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
-version = "0.6.13"
+version = "0.6.14"
 
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
@@ -805,9 +807,9 @@ version = "1.1.34+0"
 
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "d1d49166bc58e698ab38804d7bde2aef43e4b594"
+git-tree-sha1 = "7928d348322698fb93d5c14b184fdc176c8afc82"
 uuid = "ffd25f8a-64ca-5728-b0f7-c24cf3aae800"
-version = "5.2.7+0"
+version = "5.2.9+0"
 
 [[deps.Xorg_libX11_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libxcb_jll", "Xorg_xtrans_jll"]
