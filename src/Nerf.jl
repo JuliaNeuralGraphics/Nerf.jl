@@ -1,8 +1,5 @@
 module Nerf
 
-export GridEncoding, spherical_harmonics
-export BBox, Ray
-
 using Adapt
 using BSON
 using ChainRulesCore
@@ -10,28 +7,17 @@ using FileIO
 using ImageCore
 using ImageTransformations
 using JSON
-using KAUtils
 using KernelAbstractions
 using KernelAbstractions: @atomic
 using LinearAlgebra
+using Preferences
 using Quaternions
 using Rotations
 using StaticArrays
 using Statistics
 using Zygote
 
-const BACKEND = KAUtils.BACKEND
-const DEVICE = KAUtils.DEVICE
-
-@static if BACKEND == "CUDA"
-    using CUDA
-    using CUDAKernels
-    CUDA.allowscalar(false)
-elseif BACKEND == "ROC"
-    using AMDGPU
-    using ROCKernels
-    AMDGPU.allowscalar(false)
-end
+include("kautils.jl")
 
 struct Ray
     origin::SVector{3, Float32}
@@ -109,14 +95,14 @@ function main()
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(camera, get_pose(dataset, 1)...)
-    # shift!(camera, SVector{3, Float32}(0, 0, -10))
     renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
 
     for i in 1:10_000
         loss = step!(trainer)
         @show i, loss
 
-        i % 500 != 0 && continue
+        i % 1000 == 0 || continue
+
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
             model(points, directions)
         end
@@ -125,9 +111,21 @@ function main()
     nothing
 end
 
-function bench(trainer::Trainer, n::Int)
-    for _ in 1:n
+# Benchmark utils.
+
+function trainer_benchmark(trainer::Trainer, n::Int)
+    for i in 1:n
+        @show i
         step!(trainer)
+    end
+end
+
+function render_benchmark(renderer::Renderer, trainer::Trainer, n::Int)
+    for i in 1:n
+        @show i
+        render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
+            trainer.model(points, directions)
+        end
     end
 end
 
@@ -137,8 +135,8 @@ function benchmark()
     model = BasicModel(BasicField(DEVICE))
     trainer = Trainer(model, dataset)
 
-    @time bench(trainer, 10)
-    @time bench(trainer, 1000)
+    @time trainer_benchmark(trainer, 10)
+    @time trainer_benchmark(trainer, 1000)
     nothing
 end
 

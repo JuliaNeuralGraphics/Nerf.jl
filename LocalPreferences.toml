@@ -1,2 +1,2 @@
-[KAUtils]
-backend = "CUDA" # Available options: CPU, ROC, CUDA.
+[Nerf]
+backend = "ROC" # Available options: CPU, ROC, CUDA.

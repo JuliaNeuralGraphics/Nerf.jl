@@ -65,7 +65,7 @@ end
 
 Base.length(b::RayBundle) = length(b.directions)
 
-function KAUtils.unsafe_free!(b::RayBundle)
+function unsafe_free!(b::RayBundle)
     unsafe_free!(b.span)
     unsafe_free!(b.directions)
     unsafe_free!(b.image_indices)
@@ -97,7 +97,7 @@ end
 
 Base.length(s::RaySamples) = length(s.points)
 
-function KAUtils.unsafe_free!(s::RaySamples)
+function unsafe_free!(s::RaySamples)
     unsafe_free!(s.points)
     unsafe_free!(s.directions)
     unsafe_free!(s.deltas)

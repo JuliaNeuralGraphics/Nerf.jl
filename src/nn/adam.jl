@@ -33,26 +33,35 @@ function reset!(opt::Adam)
     opt.current_step = 0x0
 end
 
-function step!(opt::Adam, θ, ∇)
+"""
+    step!(opt::Adam, θ, ∇; dispose::Bool = true)
+
+Apply update rule to parameters `θ` with gradients `∇`.
+
+# Arguments:
+
+- `dispose::Bool`: Free memory taken by gradients `∇` after update.
+"""
+function step!(opt::Adam, θ, ∇; dispose::Bool)
     length(θ) == length(∇) || error(
         "Number of parameters must be the same as the number of gradients, " *
         "but is instead `$(length(θ))` vs `$(length(∇))`.")
 
     opt.current_step += 0x1
-    _step!(opt, θ, ∇, 1)
-    nothing
+    _step!(opt, θ, ∇, 1; dispose)
+    return
 end
 
-function _step!(opt::Adam, θ::T, ∇::G, i) where {
+function _step!(opt::Adam, θ::T, ∇::G, i; dispose::Bool) where {
     T <: Union{Tuple, NamedTuple}, G <: Union{Tuple, NamedTuple},
 }
     for (θᵢ, ∇ᵢ) in zip(θ, ∇)
-        i = _step!(opt, θᵢ, ∇ᵢ, i)
+        i = _step!(opt, θᵢ, ∇ᵢ, i; dispose)
     end
     i
 end
 
-function _step!(opt::Adam, θ::T, ∇::T, i) where T <: AbstractArray
+function _step!(opt::Adam, θ::T, ∇::T, i; dispose::Bool) where T <: AbstractArray
     # @assert !any(isnan.(θ)) "NaN parameters of size $(size(θ))"
     # @assert !any(isnan.(∇)) "NaN parameters of size $(size(∇))"
     size(θ) == size(∇) || error(
@@ -61,6 +70,9 @@ function _step!(opt::Adam, θ::T, ∇::T, i) where T <: AbstractArray
     wait(adam_step_kernel!(opt.dev)(
         opt.μ[i], opt.ν[i], θ, ∇, Float32(opt.current_step),
         opt.lr, opt.β1, opt.β2, opt.ϵ; ndrange=length(θ)))
+
+    dispose && unsafe_free!(∇)
+
     i + 1
 end
 
