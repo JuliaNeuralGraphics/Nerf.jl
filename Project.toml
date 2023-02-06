@@ -28,4 +28,8 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 AMDGPU = "0.4.7"
+CUDA = "4.0.1"
 ROCKernels = "0.3.2"
+CUDAKernels = "0.4.7"
+Zygote = "0.6.55"
+KernelAbstractions = "0.8.6"
