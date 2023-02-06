@@ -57,6 +57,7 @@ function set_dataset!(t::Trainer, dataset::Dataset)
 end
 
 function step!(t::Trainer)
+    GC.gc(false)
     prepare!(t)
 
     bundle = RayBundle(

@@ -27,7 +27,7 @@ end
 end
 
 @testset "Deterministic result" begin
-    ge = GridEncoding(DEVICE)
+    ge = Nerf.GridEncoding(DEVICE)
     θ = Nerf.init(ge)
     fill!(θ, 1f0)
 
@@ -37,7 +37,7 @@ end
 end
 
 @testset "Hashgrid gradients" begin
-    ge = GridEncoding(DEVICE)
+    ge = Nerf.GridEncoding(DEVICE)
     θ = Nerf.init(ge)
 
     n = 16

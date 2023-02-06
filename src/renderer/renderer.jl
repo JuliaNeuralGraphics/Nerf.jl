@@ -86,6 +86,7 @@ function render!(
     V <: AbstractVector{SVector{3, Float32}},
     N <: AbstractVector{SVector{3, Float32}},
 }
+    GC.gc(false)
     reset!(r)
     for i in 1:spp
         r.tile_idx = 0
@@ -238,6 +239,8 @@ function trace(
     max_samples = 8
 
     for step in 1:max_steps
+        GC.gc(false)
+
         rays, rgba = compact(
             hit_ids, hit_rgba, rays, rgba;
             hit_counter, min_transmittance)

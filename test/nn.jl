@@ -11,7 +11,7 @@
 
         # TODO make inferrable at > 3 length
         @inferred Nerf.init(c)
-        θ = map(l -> to_device(DEVICE, l), Nerf.init(c))
+        θ = map(l -> Nerf.to_device(DEVICE, l), Nerf.init(c))
 
         n = 16
         x = rand(DEVICE, T, (3, n))
@@ -32,7 +32,7 @@ end
     host_directions = zeros(Float32, 3, n)
     host_directions[:, 1] .= (1, 0, 0)
     host_directions[:, 2] .= (1, 1, 1)
-    directions = to_device(DEVICE, host_directions)
+    directions = Nerf.to_device(DEVICE, host_directions)
 
     norms = Nerf.safe_norm(directions; dims=1)
     @test size(norms) == (1, n)

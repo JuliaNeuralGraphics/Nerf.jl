@@ -115,8 +115,12 @@ function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     Y, back = Zygote.pullback(points) do p
         density(m.field, p, m.θ, Val{:IG}())
     end
-    ∇ = back(ones(get_device(m), Float32, size(Y)))[1]
-    safe_normalize(-∇; dims=1)
+    Δ = ones(get_device(m), Float32, size(Y))
+    ∇ = back(Δ)[1]
+    n⃗ = safe_normalize(-∇; dims=1) # TODO in-place normalization kernel with negation
+    unsafe_free!(Δ)
+    unsafe_free!(∇)
+    n⃗
 end
 
 function step!(
@@ -130,7 +134,6 @@ function step!(
         rgba = m.field(points, directions, θ)
         photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
     end
-    step!(m.optimizer, m.θ, ∇[1])
-    # TODO free ∇
+    step!(m.optimizer, m.θ, ∇[1]; dispose=true)
     loss
 end

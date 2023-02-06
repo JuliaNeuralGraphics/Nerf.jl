@@ -96,9 +96,9 @@ function update!(
     wait(distribute_density!(dev)(
         reinterpret(UInt32, tmp_density), log_densities,
         indices, cone.min_stepsize; ndrange=length(indices)))
-
     unsafe_free!(indices)
     unsafe_free!(log_densities)
+
     wait(ema_update!(dev)(
         oc.density, tmp_density, decay; ndrange=length(oc.density)))
     unsafe_free!(tmp_density)

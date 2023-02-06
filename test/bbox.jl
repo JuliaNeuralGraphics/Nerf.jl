@@ -1,6 +1,6 @@
 @testset "Intersection & union of an empty BBox with non-empty" begin
-    b1 = BBox()
-    b2 = BBox(
+    b1 = Nerf.BBox()
+    b2 = Nerf.BBox(
         SVector{3, Float32}(0f0, 0f0, 0f0),
         SVector{3, Float32}(1f0, 1f0, 1f0))
 
@@ -14,10 +14,10 @@
 end
 
 @testset "Intersection & union of two non-empty BBoxes" begin
-    b1 = BBox(
+    b1 = Nerf.BBox(
         SVector{3, Float32}(0f0, 0f0, 0f0),
         SVector{3, Float32}(2f0, 2f0, 2f0))
-    b2 = BBox(
+    b2 = Nerf.BBox(
         SVector{3, Float32}(1f0, 1f0, 1f0),
         SVector{3, Float32}(3f0, 3f0, 3f0))
 
@@ -31,7 +31,7 @@ end
 end
 
 @testset "Relative position" begin
-    bbox = BBox(zeros(SVector{3, Float32}), ones(SVector{3, Float32}))
+    bbox = Nerf.BBox(zeros(SVector{3, Float32}), ones(SVector{3, Float32}))
     @test Nerf.relative_position(bbox, bbox.min) ≈ bbox.min
     @test Nerf.relative_position(bbox, bbox.max) ≈ bbox.max
 
@@ -42,33 +42,33 @@ end
 end
 
 @testset "BBox-Ray Intersection" begin
-    bbox = BBox(zeros(SVector{3, Float32}), ones(SVector{3, Float32}))
+    bbox = Nerf.BBox(zeros(SVector{3, Float32}), ones(SVector{3, Float32}))
 
-    ray = Ray(zeros(SVector{3, Float32}), SVector{3, Float32}(0f0, 0f0, 1f0))
+    ray = Nerf.Ray(zeros(SVector{3, Float32}), SVector{3, Float32}(0f0, 0f0, 1f0))
     tmin, tmax = bbox ∩ ray
     @test tmin ≈ 0f0
     @test tmax ≈ 1f0
 
-    ray = Ray(zeros(SVector{3, Float32}), SVector{3, Float32}(0f0, 0f0, -1f0))
+    ray = Nerf.Ray(zeros(SVector{3, Float32}), SVector{3, Float32}(0f0, 0f0, -1f0))
     tmin, tmax = bbox ∩ ray
     @test tmin ≈ 0f0
     @test tmax ≈ 0f0
 
-    ray = Ray(
+    ray = Nerf.Ray(
         SVector{3, Float32}(0.5f0, 0.5f0, -1f0),
         SVector{3, Float32}(0f0, 0f0, 1f0))
     tmin, tmax = bbox ∩ ray
     @test tmin ≈ 1f0
     @test tmax ≈ 2f0
 
-    ray = Ray(
+    ray = Nerf.Ray(
         SVector{3, Float32}(0.5f0, 0.5f0, 0.5f0),
         SVector{3, Float32}(0f0, -1f0, 0f0))
     tmin, tmax = bbox ∩ ray
     @test tmin ≈ -0.5f0
     @test tmax ≈ 0.5f0
 
-    ray = Ray(
+    ray = Nerf.Ray(
         SVector{3, Float32}(0.5f0, 0.5f0, 0.5f0),
         normalize(SVector{3, Float32}(-0.5f0, -0.5f0, -0.5f0)))
     tmin, tmax = bbox ∩ ray
@@ -79,8 +79,8 @@ end
 
 # TODO: write more test cases to ensure full coverage of `Base.intersect(b::BBox, r::Ray)`.
 @testset "No BBox-Ray Intersection" begin
-    bbox = BBox(zeros(SVector{3, Float32}), ones(SVector{3, Float32}))
-    ray = Ray(
+    bbox = Nerf.BBox(zeros(SVector{3, Float32}), ones(SVector{3, Float32}))
+    ray = Nerf.Ray(
         SVector{3, Float32}(-1f0, -1f0, -1f0),
         SVector{3, Float32}(-1f0, 0f0, 0f0))
     tmin, tmax = bbox ∩ ray
