@@ -136,7 +136,7 @@ function benchmark()
     trainer = Trainer(model, dataset)
 
     @time trainer_benchmark(trainer, 10)
-    @time trainer_benchmark(trainer, 1000)
+    # @time trainer_benchmark(trainer, 1000)
     nothing
 end
 

@@ -1,23 +1,44 @@
-@inline smoothstep(x::Float32) = x^2 * (3f0 - 2f0 * x)
-
-@inline ∇smoothstep(x::Float32) = 6f0 * x * (1f0 - x)
-
-@inline function to_grid_position(x, scale::Float32, ::Val{NPD}) where NPD
-    δposition = MVector{NPD, Float32}(undef)
-    ∇position = MVector{NPD, Float32}(undef)
-    grid_position = MVector{NPD, UInt32}(undef)
-
+function extract_npd(x, ::Val{NPD}) where NPD
+    val = MVector{NPD, Float32}(undef)
     for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
-        δposition[dim] = x[dim] * scale + 0.5f0
-        tmp = floor(δposition[dim])
-        δposition[dim] -= tmp
-        grid_position[dim] = UInt32(tmp)
-
-        ∇position[dim] = ∇smoothstep(δposition[dim])
-        δposition[dim] = smoothstep(δposition[dim])
+        # TODO inbounds
+        val = x[dim]
     end
+    val
+end
+
+smoothstep(x::Float32) = x^2 * (3f0 - 2f0 * x)
+
+∇smoothstep(x::Float32) = 6f0 * x * (1f0 - x)
+
+function to_grid_position(x::MVector{NPD, Float32}, scale::Float32) where NPD
+    δposition = x .* scale .+ 0.5f0
+    tmp = floor.(δposition)
+    δposition .-= tmp
+
+    grid_position = UInt32.(tmp)
+    ∇position = ∇smoothstep.(δposition)
+    δposition = smoothstep.(δposition)
+
     δposition, grid_position, ∇position
 end
+
+# @inline function to_grid_position(x, scale::Float32, ::Val{NPD}) where NPD
+#     δposition = MVector{NPD, Float32}(undef)
+#     ∇position = MVector{NPD, Float32}(undef)
+#     grid_position = MVector{NPD, UInt32}(undef)
+
+#     for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
+#         δposition[dim] = x[dim] * scale + 0.5f0
+#         tmp = floor(δposition[dim])
+#         δposition[dim] -= tmp
+#         grid_position[dim] = UInt32(tmp)
+
+#         ∇position[dim] = ∇smoothstep(δposition[dim])
+#         δposition[dim] = smoothstep(δposition[dim])
+#     end
+#     δposition, grid_position, ∇position
+# end
 
 @inline function compute_scale(
     level::UInt32, log_scale::Float32, base_resolution::UInt32,

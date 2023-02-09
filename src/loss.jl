@@ -26,38 +26,45 @@ function ChainRulesCore.rrule(
     loss, photometric_loss_pullback
 end
 
+"""
+# Arguments:
+
+- `rgba: <: AbstractMatrix{Float32}`: Output of the model.
+    Must be of `(4, N)` shape, where each 4 components are RGBA (A for density).
+
+Refer to [`RayBundle`](@ref) for documentation on `thread_indices`,
+`image_indices` and `span` arguments.
+
+Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
+"""
 @kernel function photometric_loss!(
-    ∇rgba::M, loss::D, rgba::R,
-    thread_indices::I, rng_state::UInt64, image_indices::I,
-    span::S, deltas::D, images::Images, n_rays::UInt32,
+    ∇rgba::M, loss::D, @Const(rgba),
+    @Const(thread_indices), rng_state::UInt64, @Const(image_indices),
+    @Const(span), @Const(deltas), images::Images, n_rays::UInt32,
 ) where {
     M <: AbstractVector{SVector{4, Float32}},
-    R <: AbstractMatrix{Float32},
-    I <: AbstractVector{UInt32},
-    S <: AbstractVector{SVector{3, UInt32}},
     D <: AbstractVector{Float32},
 }
     @uniform scale::Float32 = 1f0 / n_rays
 
     i::UInt32 = @index(Global)
-    idx = thread_indices[i]
+    @inbounds idx = thread_indices[i]
 
     # Same as in sampler:
     # 3 random numbers per ray: 2 for pixel, 1 for time offset.
     rng_state = advance(rng_state, (idx - 0x1) * 0x3)
     xy, rng_state = random_vec2f0(rng_state)
 
-    image_idx = image_indices[i]
-    ray_span = span[i]
+    @inbounds image_idx = image_indices[i]
+    @inbounds ray_span = span[i]
     offset, steps = ray_span[1], ray_span[2]
-    @assert steps > 0x0
 
     composed_rgb, composed_steps = alpha_compose!(nothing, rgba, offset, steps, deltas)
     target_rgb = sample(images, xy, image_idx)
 
     diff = composed_rgb .- target_rgb
     ∇loss = 2f0 .* diff
-    loss[i] = mean(abs2, diff) * scale
+    @inbounds loss[i] = mean(abs2, diff) * scale
 
     @inline function consumer(
         rgb::SVector{3, Float32}, hcomposed_rgb::MVector{3, Float32},
@@ -66,7 +73,7 @@ end
         rgb_diff = composed_rgb .- hcomposed_rgb
         ∇rgb = ω .* ∇loss .* ∇sigmoid(rgb) .* scale
         ∇σ = σ * δt * (∇loss ⋅ (T .* rgb .- rgb_diff)) * scale
-        ∇rgba[write_idx] = SVector{4, Float32}(∇rgb[1], ∇rgb[2], ∇rgb[3], ∇σ)
+        @inbounds ∇rgba[write_idx] = SVector{4, Float32}(∇rgb[1], ∇rgb[2], ∇rgb[3], ∇σ)
     end
     alpha_compose!(consumer, rgba, offset, composed_steps, deltas)
 end
@@ -100,4 +107,6 @@ end
     composed_rgb, step
 end
 
-@inline to_rgb_a(x) = SVector{3, Float32}(x[1], x[2], x[3]), x[4]
+@inline function to_rgb_a(x)
+    @inbounds SVector{3, Float32}(x[1], x[2], x[3]), x[4]
+end

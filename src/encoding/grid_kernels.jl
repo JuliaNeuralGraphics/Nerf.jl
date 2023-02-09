@@ -2,16 +2,16 @@
     y, ∂y∂x, @Const(x), @Const(grid), @Const(offset_table),
     npd::Val{NPD}, ::Val{NFPL}, base_resolution::UInt32, log_scale::Float32,
 ) where {NPD, NFPL}
+    @uniform hashmap_size::UInt32 = size(θ, 2)
 
     i::UInt32, level::UInt32 = @index(Global, NTuple)
-
     θ = @view(grid[:, (offset_table[level] + 0x1):offset_table[level + 0x1]])
-    hashmap_size::UInt32 = size(θ, 2)
 
     scale = compute_scale(level, log_scale, base_resolution)
     resolution = ceil(UInt32, scale) + 0x1
     δposition, grid_position, ∇position = to_grid_position(
-        @view(x[:, i]), scale, npd)
+        extract_npd(@view(x[:, i]), npd), scale)
+        # @view(x[:, i]), scale, npd)
 
     result = zeros(MVector{NFPL, Float32})
     local_grid_position = MVector{NPD, UInt32}(undef)
@@ -89,7 +89,9 @@ end
 
     scale = compute_scale(level, log_scale, base_resolution)
     grid_resolution = ceil(UInt32, scale) + 0x1
-    δposition, grid_position, _ = to_grid_position(@view(x[:, i]), scale, npd)
+    δposition, grid_position, _ = to_grid_position(
+        extract_npd(@view(x[:, i]), npd), scale)
+        # @view(x[:, i]), scale, npd)
 
     s∂L∂y = MVector{NFPL, Float32}(undef)
     for f in UnitRange{UInt32}(UInt32(1), UInt32(NFPL))

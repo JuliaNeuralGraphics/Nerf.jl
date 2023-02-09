@@ -1,7 +1,7 @@
 include("morton.jl")
 include("indexing.jl")
 
-mutable struct OccupancyGrid{D, B}
+mutable struct OccupancyGrid{D <: AbstractArray{Float32, 4}, B <: AbstractVector{UInt8}}
     density::D
     binary::B
     mean_density::Float32
@@ -19,7 +19,6 @@ end
     prod(size(oc.density)[1:3]) * level
 end
 
-# TODO use it
 @inline function offset_binary(oc::OccupancyGrid, level::Integer)
     offset(oc, level) ÷ 8
 end
@@ -115,7 +114,7 @@ function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
     wait(distribute_to_binary!(dev)(
         oc.binary, oc.density, threshold; ndrange=length(oc.binary)))
 
-    binary_level_length = prod(size(oc.density)[1:3]) ÷ 8
+    binary_level_length = offset_binary(oc, 1)
     binary_resolution = UInt32(size(oc.density, 1) ÷ 8)
     ndrange = binary_level_length ÷ 8
     n_levels = size(oc.density, 4)
@@ -130,7 +129,7 @@ function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
 end
 
 @kernel function binary_max_pool!(
-    curr_level::L, prev_level::L, binary_resolution::UInt32,
+    curr_level::L, @Const(prev_level), binary_resolution::UInt32,
 ) where L <: AbstractVector{UInt8}
     i::UInt32 = @index(Global)
     idx = i - 0x1
@@ -138,51 +137,44 @@ end
 
     # If any bit is set in the previous level, set current level bit.
     bits::UInt8 = 0x0
-    for j in 0x1:0x8
+    @inbounds for j in 0x1:0x8
         bits |= ifelse(prev_level[offset + j] > 0x0, 1 << (j - 0x1), 0x0)
     end
 
     x = morton3D_invert(idx) + binary_resolution
     y = morton3D_invert(idx >> 0x1) + binary_resolution
     z = morton3D_invert(idx >> 0x2) + binary_resolution
-    curr_level[morton3D(x, y, z) + 0x1] |= bits
+    @inbounds curr_level[morton3D(x, y, z) + 0x1] |= bits
 end
 
 @kernel function distribute_to_binary!(
-    binary::B, density::D, threshold::Float32,
-) where {
-    B <: AbstractVector{UInt8},
-    D <: AbstractArray{Float32, 4},
-}
+    binary::B, @Const(density), threshold::Float32,
+) where B <: AbstractVector{UInt8}
     i::UInt32 = @index(Global)
     offset = (i - 0x1) * 0x8
     bits::UInt8 = 0x0
-    for j in 0x1:0x8
+    @inbounds for j in 0x1:0x8
         bits |= ifelse(density[offset + j] > threshold, 0x1 << (j - 0x1), 0x0)
     end
-    binary[i] = bits
+    @inbounds binary[i] = bits
 end
 
 @kernel function ema_update!(
-    density::D, tmp_density::D, decay::Float32,
+    density::D, @Const(tmp_density), decay::Float32,
 ) where D <: AbstractArray{Float32, 4}
     i::UInt32 = @index(Global)
-    p = density[i]
-    c = tmp_density[i]
-    density[i] = ifelse(p < 0f0, p, max(p * decay, c))
+    @inbounds p = density[i]
+    @inbounds c = tmp_density[i]
+    @inbounds density[i] = ifelse(p < 0f0, p, max(p * decay, c))
 end
 
 @kernel function distribute_density!(
-    density::D, log_density::L, indices::I, min_cone_stepsize::Float32,
-) where {
-    D <: AbstractArray{UInt32, 4},
-    L <: AbstractVector{Float32},
-    I <: AbstractVector{UInt32},
-}
+    density::D, @Const(log_density), @Const(indices), min_cone_stepsize::Float32,
+) where D <: AbstractArray{UInt32, 4}
     i::UInt32 = @index(Global)
-    idx = indices[i]
-    σ = reinterpret(UInt32, exp(log_density[i]) * min_cone_stepsize)
-    @atomic max(density[idx], σ)
+    @inbounds idx = indices[i]
+    @inbounds σ = reinterpret(UInt32, exp(log_density[i]) * min_cone_stepsize)
+    @inbounds @atomic max(density[idx], σ)
 end
 
 @kernel function generate_points!(
@@ -212,12 +204,12 @@ end
     for j in UnitRange{UInt32}(zero(UInt32), UInt32(9))
         level_idx = lcg(i - 0x1 + step * n_elements, j, level_length)
         idx = level_idx + level_offset + 0x1
-        density[idx] > threshold && break
+        @inbounds density[idx] > threshold && break
     end
 
     point = index_to_point(level_idx, resolution, level, δ)
-    points[i] = relative_position(bbox, point)
-    indices[i] = idx
+    @inbounds points[i] = relative_position(bbox, point)
+    @inbounds indices[i] = idx
 end
 
 # Linear congruential generator.
@@ -236,9 +228,9 @@ function mark_invisible_regions!(
 end
 
 @kernel function _mark_invisible_regions!(
-    density, @Const(rotations), @Const(translations),
+    density::D, @Const(rotations), @Const(translations),
     res_scale::SVector{2, Float32},
-)
+) where D <: AbstractArray{Float32, 4}
     @uniform resolution::UInt32 = size(density, 1)
     @uniform level_length::UInt32 = resolution^3
     @uniform n_images::UInt32 = length(rotations)
@@ -252,13 +244,13 @@ end
 
     is_visible = false
     for j in UnitRange{UInt32}(UInt32(1):n_images)
-        new_point = transpose(rotations[j]) * (point - translations[j])
+        @inbounds new_point = transpose(rotations[j]) * (point - translations[j])
         if new_point[3] > 0f0
             is_visible = is_in_view(new_point, res_scale, voxel_radius)
             is_visible && break
         end
     end
-    density[i] = ifelse(is_visible, 0f0, -1f0)
+    @inbounds density[i] = ifelse(is_visible, 0f0, -1f0)
 end
 
 @inline function is_in_view(

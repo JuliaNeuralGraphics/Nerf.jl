@@ -1,3 +1,6 @@
+"""
+TODO
+"""
 struct RayBundle{
     R <: AbstractVector{SVector{3, Float32}},
     I <: AbstractVector{UInt32},
@@ -121,14 +124,9 @@ end
 @kernel function generate_ray_bundle!(
     bundle::RayBundle, steps_counter::C, rays_counter::C,
     rng_state::UInt64, cone::Cone, bbox::BBox,
-    rotations::R, translations::T, intrinsics::CameraIntrinsics,
-    binary::B, n_levels::UInt32, resolution::UInt32,
-) where {
-    C <: AbstractVector{UInt32},
-    R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
-    T <: AbstractVector{SVector{3, Float32}},
-    B <: AbstractVector{UInt8},
-}
+    @Const(rotations), @Const(translations), intrinsics::CameraIntrinsics,
+    @Const(binary), n_levels::UInt32, resolution::UInt32,
+) where C <: AbstractVector{UInt32}
     @uniform n_rays::UInt32 = @ndrange()[1]
     @uniform n_images::UInt32 = length(rotations)
 
@@ -140,14 +138,14 @@ end
     xy, rng_state = random_vec2f0(rng_state)
     ξ, rng_state = next_float(rng_state)
 
-    ray = Ray(xy, rotations[image_idx], translations[image_idx], intrinsics)
+    @inbounds ray = Ray(xy, rotations[image_idx], translations[image_idx], intrinsics)
     t_start::Float32 = max(0f0, (bbox ∩ ray)[1])
     t_start += delta(cone, t_start) * ξ
 
     _, _, steps = trace_ray!(
         nothing, ray, t_start, cone.steps,
         cone, bbox, binary, n_levels, resolution)
-    if steps > 0
+    @inbounds if steps > 0
         offset, _ = @atomic steps_counter[0x1] + steps
         _, ray_idx = @atomic rays_counter[0x1] + 0x1
 
@@ -159,19 +157,23 @@ end
     end
 end
 
+"""
+# Arguments:
+
+- `bundle::RayBundle`: Ray bundle.
+- `translations:: <: AbstractVector{SVector{3, Float32}}`:
+    Vector of translations from the dataset.
+"""
 @kernel function materialize_ray_bundle!(
-    samples::RaySamples, bundle::RayBundle,
-    cone::Cone, bbox::BBox, translations::T,
-    binary::B, n_levels::UInt32, resolution::UInt32,
-) where {
-    T <: AbstractVector{SVector{3, Float32}},
-    B <: AbstractVector{UInt8},
-}
+    samples::RaySamples, @Const(bundle),
+    cone::Cone, bbox::BBox, @Const(translations),
+    @Const(binary), n_levels::UInt32, resolution::UInt32,
+)
     i::UInt32 = @index(Global)
 
-    direction = bundle.directions[i]
-    image_idx = bundle.image_indices[i]
-    span = bundle.span[i]
+    @inbounds direction = bundle.directions[i]
+    @inbounds image_idx = bundle.image_indices[i]
+    @inbounds span = bundle.span[i]
 
     offset, steps, t_start = span[1], span[2], reinterpret(Float32, span[3])
     if steps > 0x0
