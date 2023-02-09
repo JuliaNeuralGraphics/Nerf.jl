@@ -47,7 +47,7 @@ end
     bidx = idx ÷ 0x8 + offset + 0x1
 
     mask = 0x1 << (idx % 0x8)
-    (binary[bidx] & mask) > 0x0
+    @inbounds (binary[bidx] & mask) > 0x0
 end
 
 # n_levels: 0-based

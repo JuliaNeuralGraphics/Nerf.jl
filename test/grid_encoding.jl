@@ -19,9 +19,8 @@ end
     for level in 1:16
         scale = Nerf.compute_scale(UInt32(level), log_scale, base_resolution)
 
-        x = SVector{3, Float32}(0.1f0, 0.5f0, 0.9f0)
-        δposition, grid_position, ∂position = Nerf.to_grid_position(
-            x, scale, Val{3}())
+        x = MVector{3, Float32}(0.1f0, 0.5f0, 0.9f0)
+        δposition, grid_position, ∂position = Nerf.to_grid_position(x, scale)
         @test all(0f0 .≤ δposition .≤ 1f0)
     end
 end

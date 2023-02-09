@@ -33,12 +33,12 @@ function accumulate!(b::RenderBuffer; offset::UInt32, tile_size::Int)
 end
 
 @kernel function accumulate_kernel!(
-    accumulator::B, buffer::B, offset::UInt32, spp::Float32,
+    accumulator::B, @Const(buffer), offset::UInt32, spp::Float32,
 ) where B <: AbstractMatrix{SVector{4, Float32}}
     i::UInt32 = @index(Global)
     idx = i + offset
-    tmp = accumulator[idx]
-    accumulator[idx] = (tmp .* spp .+ buffer[idx]) ./ (spp + 1f0)
+    @inbounds tmp = accumulator[idx]
+    @inbounds accumulator[idx] = (tmp .* spp .+ buffer[idx]) ./ (spp + 1f0)
 end
 
 function to_image(b::RenderBuffer)
