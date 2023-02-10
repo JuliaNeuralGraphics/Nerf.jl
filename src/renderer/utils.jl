@@ -6,7 +6,7 @@ struct RenderRay
     alive::Bool
 end
 
-@inline function RenderRay(
+function RenderRay(
     r::RenderRay; t::Float32 = r.t,
     steps::UInt32 = r.steps, alive::Bool = r.alive,
 )

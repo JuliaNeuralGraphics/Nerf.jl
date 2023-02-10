@@ -110,7 +110,7 @@ To obtain actual intersection points, compute point along the ray:
 
 In case when ray does not intersect BBox at all, returns `(Inf32, Inf32)`.
 """
-function Base.intersect(b::BBox, r::Ray)
+@inline function Base.intersect(b::BBox, r::Ray)
     tmin = (b.min[1] - r.origin[1]) / r.direction[1]
     tmax = (b.max[1] - r.origin[1]) / r.direction[1]
     isnan(tmin) && (tmin = 0f0;)
@@ -146,12 +146,12 @@ function Base.intersect(b::BBox, r::Ray)
     tmin, tmax
 end
 
-function Base.in(v, b::BBox)
+@inline function Base.in(v, b::BBox)
     b.min[1] ≤ v[1] ≤ b.max[1] &&
     b.min[2] ≤ v[2] ≤ b.max[2] &&
     b.min[3] ≤ v[3] ≤ b.max[3]
 end
 
-function Base.in(q::BBox, b::BBox)
+@inline function Base.in(q::BBox, b::BBox)
     q.min ∈ b && q.max ∈ b
 end

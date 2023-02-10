@@ -153,15 +153,15 @@ end
     t_start = max(near, (bbox ∩ ray)[1]) + 1f-6
 
     is_alive = !isinf(t_start) && (ray(t_start) ∈ bbox)
-    rays[i] = RenderRay(ray, t_start, i, UInt32(0), is_alive)
+    @inbounds rays[i] = RenderRay(ray, t_start, i, UInt32(0), is_alive)
 end
 
 @kernel function init_advance!(
     rays::R, cone::Cone, bbox::BBox,
-    binary::B, n_levels::UInt32, resolution::UInt32, spp::UInt32,
-) where {R <: AbstractVector{RenderRay}, B <: AbstractVector{UInt8}}
+    @Const(binary), n_levels::UInt32, resolution::UInt32, spp::UInt32,
+) where R <: AbstractVector{RenderRay}
     i::UInt32 = @index(Global)
-    rray = rays[i]
+    @inbounds rray = rays[i]
     if rray.alive
         ray = rray.ray
         ξ = ld_random_val(spp, (i - 0x1) * 0x000c0001)
@@ -178,26 +178,26 @@ end
 
             t = to_next_voxel(t, cone, point, ray.direction, resolution >> level)
         end
-        rays[i] = RenderRay(rray; t, alive)
+        @inbounds rays[i] = RenderRay(rray; t, alive)
     end
 end
 
 @kernel function shade!(
-    buffer::B, hit_ids::I, hit_rgba::C, offset::UInt32, mode::RenderMode,
+    buffer::B, @Const(hit_ids), @Const(hit_rgba), offset::UInt32, mode::RenderMode,
 ) where {
     B <: AbstractMatrix{SVector{4, Float32}},
-    I <: AbstractVector{UInt32},
-    C <: AbstractVector{SVector{4, Float32}},
+    # I <: AbstractVector{UInt32},
+    # C <: AbstractVector{SVector{4, Float32}},
 }
     i::UInt32 = @index(Global)
-    idx = hit_ids[i] + offset
-    rgba = hit_rgba[i]
+    @inbounds idx = hit_ids[i] + offset
+    @inbounds rgba = hit_rgba[i]
     if mode == Normals
         rgb, a = to_rgb_a(rgba)
         n = (rgb .* 0.5f0 .+ 0.5f0) .* a
         rgba = SVector{4, Float32}(n[1], n[2], n[3], a)
     end
-    buffer[idx] = rgba .+ buffer[idx] .* (1f0 - rgba[4])
+    @inbounds buffer[idx] = rgba .+ buffer[idx] .* (1f0 - rgba[4])
 end
 
 function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
@@ -282,29 +282,30 @@ function trace(
 end
 
 @kernel function compose!(
-    rgba::C, span::S, evaluated_rgba::G, ∇n::N,
+    rgba::C, @Const(span), @Const(evaluated_rgba), ∇n::N,
     rays::R, samples::RaySamples, mode::RenderMode,
     camera_origin::SVector{3, Float32}, camera_forward::SVector{3, Float32},
     bbox::BBox, min_transmittance::Float32, max_samples::UInt32,
 ) where {
     C <: AbstractVector{SVector{4, Float32}},
-    S <: AbstractVector{SVector{3, UInt32}},
-    G <: AbstractVector{SVector{4, Float32}},
+    # TODO docs
+    # S <: AbstractVector{SVector{3, UInt32}},
+    # G <: AbstractVector{SVector{4, Float32}},
     N <: Union{Nothing, AbstractVector{SVector{3, Float32}}},
     R <: AbstractVector{RenderRay},
 }
     i::UInt32 = @index(Global)
-    ray_span = span[i]
+    @inbounds ray_span = span[i]
     offset, steps, idx = ray_span[1], ray_span[2], ray_span[3]
-    rray = rays[idx]
+    @inbounds rray = rays[idx]
 
-    local_rgba = MVector{4, Float32}(rgba[idx])
+    @inbounds local_rgba = MVector{4, Float32}(rgba[idx])
     step = UInt32(0)
     while step < steps
         read_idx = offset + step + 0x1
         rgb, log_σ = to_rgb_a(evaluated_rgba[read_idx])
-        point = samples.points[read_idx]
-        δ = samples.deltas[read_idx]
+        @inbounds point = samples.points[read_idx]
+        @inbounds δ = samples.deltas[read_idx]
 
         σ = exp(log_σ)
         T = 1f0 - local_rgba[4]
@@ -321,7 +322,7 @@ end
         elseif mode == Encoding
             rgb = SVector{3, Float32}(point[1], point[2], point[3])
         elseif mode == Normals && ∇n ≢ nothing
-            rgb = ∇n[read_idx]
+            @inbounds rgb = ∇n[read_idx]
         elseif mode == Stepsize
             rgb = SVector{3, Float32}(δ, δ, δ)
         end
@@ -341,9 +342,9 @@ end
         step += 0x1
     end
     if step < max_samples
-        rays[idx] = RenderRay(rray; alive=false)
+        @inbounds rays[idx] = RenderRay(rray; alive=false)
     end
-    rgba[idx] = local_rgba
+    @inbounds rgba[idx] = local_rgba
 end
 
 function compact(
@@ -373,8 +374,9 @@ function compact(
 end
 
 @kernel function _compact!(
-    alive_rays::R, alive_rgba::C, hit_ids::H, hit_rgba::C, rays::R, rgba::C,
-    min_transmittance::Float32, alive_counter::K, hit_counter::K,
+    alive_rays::R, alive_rgba::C, hit_ids::H, hit_rgba::C,
+    @Const(rays), @Const(rgba), min_transmittance::Float32,
+    alive_counter::K, hit_counter::K,
 ) where {
     R <: AbstractVector{RenderRay},
     C <: AbstractVector{SVector{4, Float32}},
@@ -382,15 +384,17 @@ end
     K <: AbstractVector{UInt32},
 }
     i::UInt32 = @index(Global)
-    ray, c = rays[i], rgba[i]
-    if ray.alive
-        _, idx = @atomic alive_counter[0x1] + 0x1
-        alive_rays[idx] = ray
-        alive_rgba[idx] = c
-    elseif c[4] > min_transmittance
-        _, idx = @atomic hit_counter[0x1] + 0x1
-        hit_ids[idx] = ray.idx
-        hit_rgba[idx] = c
+    @inbounds begin
+        ray, c = rays[i], rgba[i]
+        if ray.alive
+            _, idx = @atomic alive_counter[0x1] + 0x1
+            alive_rays[idx] = ray
+            alive_rgba[idx] = c
+        elseif c[4] > min_transmittance
+            _, idx = @atomic hit_counter[0x1] + 0x1
+            hit_ids[idx] = ray.idx
+            hit_rgba[idx] = c
+        end
     end
 end
 
@@ -441,54 +445,52 @@ function materialize(
 end
 
 @kernel function count_render_samples!(
-    span::S, steps_counter::K, rays_counter::K, rays::R,
+    span::S, steps_counter::K, rays_counter::K, @Const(rays),
     bbox::BBox, cone::Cone, max_samples::UInt32,
-    binary::B, n_levels::UInt32, resolution::UInt32,
+    @Const(binary), n_levels::UInt32, resolution::UInt32,
 ) where {
     S <: AbstractVector{SVector{3, UInt32}},
     K <: AbstractVector{UInt32},
-    R <: AbstractVector{RenderRay},
-    B <: AbstractVector{UInt8},
 }
     i::UInt32 = @index(Global)
-    rray = rays[i]
+    @inbounds rray = rays[i]
     ray = rray.ray
 
     _, _, steps = trace_ray!(
         nothing, ray, rray.t, max_samples, cone, bbox,
         binary, n_levels, resolution)
 
-    offset, _ = @atomic steps_counter[0x1] + steps
-    _, ray_idx = @atomic rays_counter[0x1] + 0x1
-    span[ray_idx] = SVector{3, UInt32}(offset, steps, i)
+    @inbounds begin
+        offset, _ = @atomic steps_counter[0x1] + steps
+        _, ray_idx = @atomic rays_counter[0x1] + 0x1
+        span[ray_idx] = SVector{3, UInt32}(offset, steps, i)
+    end
 end
 
 @kernel function generate_render_samples!(
-    samples::RaySamples, span::P, rays::R,
+    samples::RaySamples, @Const(span), rays::R,
     bbox::BBox, train_bbox::BBox, cone::Cone,
-    binary::B, n_levels::UInt32, resolution::UInt32,
-) where {
-    P <: AbstractVector{SVector{3, UInt32}},
-    R <: AbstractVector{RenderRay},
-    B <: AbstractVector{UInt8},
-}
+    @Const(binary), n_levels::UInt32, resolution::UInt32,
+) where R <: AbstractVector{RenderRay}
     i = @index(Global)
-    ray_span = span[i]
+    @inbounds ray_span = span[i]
     offset, steps, idx = ray_span[1], ray_span[2], ray_span[3]
 
-    rray = rays[idx]
+    @inbounds rray = rays[idx]
     ray = rray.ray
 
     @inline function consumer(point::SVector{3, Float32}, δ::Float32, step::UInt32)
         write_idx = offset + step + 0x1
-        samples.points[write_idx] = relative_position(train_bbox, point)
-        samples.directions[write_idx] = ray.direction
-        samples.deltas[write_idx] = δ
+        @inbounds begin
+            samples.points[write_idx] = relative_position(train_bbox, point)
+            samples.directions[write_idx] = ray.direction
+            samples.deltas[write_idx] = δ
+        end
     end
     # If steps == 0, trace the ray anyway, to get new `t` or `alive` status.
     steps = ifelse(steps == 0, UInt32(1), steps)
     alive, t, new_steps = trace_ray!(
         consumer, ray, rray.t, steps, cone, bbox,
         binary, n_levels, resolution)
-    rays[idx] = RenderRay(rray; alive, t, steps=rray.steps + new_steps)
+    @inbounds rays[idx] = RenderRay(rray; alive, t, steps=rray.steps + new_steps)
 end
