@@ -10,7 +10,6 @@ function photometric_loss(
         rgba, bundle.thread_indices, rng_state, bundle.image_indices,
         bundle.span, samples.deltas, images, UInt32(n_rays);
         ndrange=length(bundle)))
-    # TODO accumulate loss in the kernel?
     sum(loss), ∇rgba
 end
 
