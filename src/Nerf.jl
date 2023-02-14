@@ -101,7 +101,7 @@ function main()
         loss = step!(trainer)
         @show i, loss
 
-        i % 1000 == 0 || continue
+        i % 100 == 0 || continue
 
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
             model(points, directions)

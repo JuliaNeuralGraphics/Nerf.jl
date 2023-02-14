@@ -77,22 +77,27 @@ struct RaySamples{
     points::P
     directions::D
     deltas::B
+    length::UInt32
 end
 
 function Adapt.adapt_structure(to, samples::RaySamples)
     RaySamples(
         adapt(to, samples.points), adapt(to, samples.directions),
-        adapt(to, samples.deltas))
+        adapt(to, samples.deltas), samples.length)
 end
 
 function RaySamples(dev; n_samples::Int)
-    RaySamples(
-        similar(dev, SVector{3, Float32}, (n_samples,)),
-        similar(dev, SVector{3, Float32}, (n_samples,)),
-        similar(dev, Float32, (n_samples,)))
+    padded_samples = next_multiple(n_samples, 64)
+    points = similar(dev, SVector{3, Float32}, (padded_samples,))
+    directions = similar(dev, SVector{3, Float32}, (padded_samples,))
+    δ = similar(dev, Float32, (padded_samples,))
+
+    # Initialize points to `0` since grid encoding expects [0, 1] values.
+    padded_samples > n_samples && fill!(reinterpret(Float32, points), 0f0)
+    RaySamples(points, directions, δ, UInt32(n_samples))
 end
 
-Base.length(s::RaySamples) = length(s.points)
+Base.length(s::RaySamples) = Int(s.length)
 
 function unsafe_free!(s::RaySamples)
     unsafe_free!(s.points)
