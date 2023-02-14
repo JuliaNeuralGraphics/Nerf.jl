@@ -3,14 +3,13 @@ function photometric_loss(
     n_rays::Int, rng_state::UInt64,
 ) where R <: AbstractMatrix{Float32}
     dev = device_from_type(R)
-    loss = similar(dev, Float32, (length(bundle),))
+    loss = similar(dev, Float32, length(bundle))
     ∇rgba = zeros(dev, Float32, size(rgba))
     wait(photometric_loss!(dev)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.thread_indices, rng_state, bundle.image_indices,
         bundle.span, samples.deltas, images, UInt32(n_rays);
         ndrange=length(bundle)))
-    # TODO accumulate loss in the kernel?
     sum(loss), ∇rgba
 end
 
@@ -20,9 +19,7 @@ function ChainRulesCore.rrule(
 ) where R <: AbstractMatrix{Float32}
     loss, ∇rgba = photometric_loss(
         rgba; bundle, samples, images, n_rays, rng_state)
-    function photometric_loss_pullback(_)
-        NoTangent(), ∇rgba
-    end
+    photometric_loss_pullback(_) = (NoTangent(), ∇rgba)
     loss, photometric_loss_pullback
 end
 

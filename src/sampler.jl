@@ -11,21 +11,22 @@ struct RayBundle{
     image_indices::I
     span::S
     n_samples::UInt32
+    n_rays::UInt32
 end
 
 function Adapt.adapt_structure(to, bundle::RayBundle)
     RayBundle(
         adapt(to, bundle.directions), adapt(to, bundle.thread_indices),
         adapt(to, bundle.image_indices), adapt(to, bundle.span),
-        bundle.n_samples)
+        bundle.n_samples, bundle.n_rays)
 end
 
 function RayBundle(dev; n_rays::Int)
-    directions = similar(dev, SVector{3, Float32}, (n_rays,))
-    thread_indices = similar(dev, UInt32, (n_rays,))
-    image_indices = similar(dev, UInt32, (n_rays,))
-    span = similar(dev, SVector{3, UInt32}, (n_rays,))
-    RayBundle(directions, thread_indices, image_indices, span, zero(UInt32))
+    directions = similar(dev, SVector{3, Float32}, n_rays)
+    thread_indices = similar(dev, UInt32, n_rays)
+    image_indices = similar(dev, UInt32, n_rays)
+    span = similar(dev, SVector{3, UInt32}, n_rays)
+    RayBundle(directions, thread_indices, image_indices, span, zero(UInt32), zero(UInt32))
 end
 
 function RayBundle(
@@ -50,23 +51,16 @@ function RayBundle(
         occupancy.binary, n_levels, resolution; ndrange=n_rays))
 
     n_samples::UInt32 = Array(steps_counter)[1]
-    rc::Int = Array(rays_counter)[1]
+    rc::UInt32 = Array(rays_counter)[1]
     @assert rc > 0
 
-    if rc != n_rays
-        trimmed_bundle = RayBundle(
-            bundle.directions[1:rc], bundle.thread_indices[1:rc],
-            bundle.image_indices[1:rc], bundle.span[1:rc], n_samples)
-        unsafe_free!(bundle)
-    else
-        trimmed_bundle = RayBundle(
-            bundle.directions, bundle.thread_indices, bundle.image_indices,
-            bundle.span, n_samples)
-    end
-    trimmed_bundle
+    # Update `n_samples` and `n_rays` fields only.
+    RayBundle(
+        bundle.directions, bundle.thread_indices, bundle.image_indices,
+        bundle.span, n_samples, rc)
 end
 
-Base.length(b::RayBundle) = length(b.directions)
+Base.length(b::RayBundle) = Int(b.n_rays)
 
 function unsafe_free!(b::RayBundle)
     unsafe_free!(b.span)
@@ -83,22 +77,23 @@ struct RaySamples{
     points::P
     directions::D
     deltas::B
+    length::UInt32
 end
 
 function Adapt.adapt_structure(to, samples::RaySamples)
     RaySamples(
         adapt(to, samples.points), adapt(to, samples.directions),
-        adapt(to, samples.deltas))
+        adapt(to, samples.deltas), samples.length)
 end
 
 function RaySamples(dev; n_samples::Int)
-    RaySamples(
-        similar(dev, SVector{3, Float32}, (n_samples,)),
-        similar(dev, SVector{3, Float32}, (n_samples,)),
-        similar(dev, Float32, (n_samples,)))
+    points = similar(dev, SVector{3, Float32}, n_samples)
+    directions = similar(dev, SVector{3, Float32}, n_samples)
+    δ = similar(dev, Float32, n_samples)
+    RaySamples(points, directions, δ, UInt32(n_samples))
 end
 
-Base.length(s::RaySamples) = length(s.points)
+Base.length(s::RaySamples) = Int(s.length)
 
 function unsafe_free!(s::RaySamples)
     unsafe_free!(s.points)
