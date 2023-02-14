@@ -167,6 +167,8 @@ function trace(
     n_alive = length(rays)
 
     for step in 1:max_steps
+        GC.gc(false)
+
         n_alive = compact!(bundle; n_alive, min_transmittance)
         n_alive == 0 && break
 

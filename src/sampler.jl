@@ -22,10 +22,10 @@ function Adapt.adapt_structure(to, bundle::RayBundle)
 end
 
 function RayBundle(dev; n_rays::Int)
-    directions = similar(dev, SVector{3, Float32}, (n_rays,))
-    thread_indices = similar(dev, UInt32, (n_rays,))
-    image_indices = similar(dev, UInt32, (n_rays,))
-    span = similar(dev, SVector{3, UInt32}, (n_rays,))
+    directions = similar(dev, SVector{3, Float32}, n_rays)
+    thread_indices = similar(dev, UInt32, n_rays)
+    image_indices = similar(dev, UInt32, n_rays)
+    span = similar(dev, SVector{3, UInt32}, n_rays)
     RayBundle(directions, thread_indices, image_indices, span, zero(UInt32), zero(UInt32))
 end
 
@@ -87,13 +87,9 @@ function Adapt.adapt_structure(to, samples::RaySamples)
 end
 
 function RaySamples(dev; n_samples::Int)
-    padded_samples = next_multiple(n_samples, 64)
-    points = similar(dev, SVector{3, Float32}, (padded_samples,))
-    directions = similar(dev, SVector{3, Float32}, (padded_samples,))
-    δ = similar(dev, Float32, (padded_samples,))
-
-    # Initialize points to `0` since grid encoding expects [0, 1] values.
-    padded_samples > n_samples && fill!(reinterpret(Float32, points), 0f0)
+    points = similar(dev, SVector{3, Float32}, n_samples)
+    directions = similar(dev, SVector{3, Float32}, n_samples)
+    δ = similar(dev, Float32, n_samples)
     RaySamples(points, directions, δ, UInt32(n_samples))
 end
 
