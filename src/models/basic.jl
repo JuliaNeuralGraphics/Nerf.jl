@@ -54,7 +54,7 @@ function (b::BasicField)(
     encoded_directions = spherical_harmonics(directions)
     backbone = b.density_mlp(encoded_points, θ.θdensity)
     rgb = b.color_mlp(vcat(backbone, encoded_directions), θ.θcolor)
-    vcat(rgb, backbone[[1], :])
+    vcat(rgb, reshape(backbone[1, :], 1, :))
 end
 
 function density(b::BasicField, points::P, θ, mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
