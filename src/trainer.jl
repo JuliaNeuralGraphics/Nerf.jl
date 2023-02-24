@@ -57,7 +57,7 @@ function set_dataset!(t::Trainer, dataset::Dataset)
 end
 
 function step!(t::Trainer)
-    GC.gc(false)
+    BACKEND == "ROC" && GC.gc() # FIXME
     prepare!(t)
 
     bundle = RayBundle(

@@ -86,7 +86,7 @@ function render!(
     V <: AbstractVector{SVector{3, Float32}},
     N <: AbstractVector{SVector{3, Float32}},
 }
-    GC.gc(false)
+    BACKEND == "ROC" && GC.gc() # FIXME
     reset!(r)
     for i in 1:spp
         r.tile_idx = 0
@@ -161,20 +161,22 @@ function trace(
     dev = get_device(r)
     bundle = RenderRayBundle(rays)
     camera_origin, camera_forward = view_pos(r.camera), view_dir(r.camera)
-    # Maximum number of ray samples before recompaction:
+    # Min/max number of steps along the ray before recompaction:
     # alive rays are adjacent.
-    max_samples = 8
-    n_alive = length(rays)
+    min_sample_steps, max_sample_steps = 1, 8
+    n_alive = n_rays = length(rays)
 
     for step in 1:max_steps
-        GC.gc(false)
+        BACKEND == "ROC" && GC.gc() # FIXME
 
         n_alive = compact!(bundle; n_alive, min_transmittance)
         n_alive == 0 && break
 
+        n_steps = clamp(n_rays ÷ n_alive, min_sample_steps, max_sample_steps)
+
         samples, span = materialize(
             bundle, occupancy, r.cone;
-            train_bbox, render_bbox=r.bbox, max_samples)
+            train_bbox, render_bbox=r.bbox, max_samples=n_steps)
         length(samples) == 0 && continue
 
         raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
@@ -195,7 +197,7 @@ function trace(
             alive_rgba, span, evaluated_rgba, ∇n,
             alive_rays, samples, r.mode,
             camera_origin, camera_forward,
-            r.bbox, min_transmittance, UInt32(max_samples); ndrange=n_alive))
+            r.bbox, min_transmittance, UInt32(n_steps); ndrange=n_alive))
 
         unsafe_free!(evaluated_rgba)
         unsafe_free!(samples)
