@@ -115,14 +115,14 @@ end
 
 function trainer_benchmark(trainer::Trainer, n::Int)
     for i in 1:n
-        @show i
+        Core.println(i)
         step!(trainer)
     end
 end
 
 function render_benchmark(renderer::Renderer, trainer::Trainer, n::Int)
     for i in 1:n
-        @show i
+        Core.println(i)
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
             trainer.model(points, directions)
         end
@@ -135,12 +135,18 @@ function benchmark()
     model = BasicModel(BasicField(DEVICE))
     trainer = Trainer(model, dataset)
 
+    GC.enable_logging(true)
+
+    Core.println("Trainer benchmark")
+
     @time trainer_benchmark(trainer, 10)
     @time trainer_benchmark(trainer, 1000)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(camera, get_pose(dataset, 1)...)
     renderer = Renderer(DEVICE, camera, trainer.bbox, trainer.cone)
+
+    Core.println("Renderer benchmark")
 
     @time render_benchmark(renderer, trainer, 2)
     @time render_benchmark(renderer, trainer, 10)

@@ -1,0 +1,793 @@
+WARNING: Method definition next_queue() in module ROCKernels at /home/pxl-th/.julia/packages/ROCKernels/TyQpD/src/ROCKernels.jl:40 overwritten in module Nerf at /home/pxl-th/code/Nerf.jl/src/kautils.jl:27.
+  ** incremental compilation may be fatally broken for this module **
+
+[ Info: [Nerf.jl] Backend: ROC
+[ Info: [Nerf.jl] Device: GPU-XX [AMD Radeon RX 6700 XT (gfx1030)]
+LoadLib(libhsa-amd-aqlprofile64.so) failed: libhsa-amd-aqlprofile64.so: cannot open shared object file: No such file or directory
+Trainer benchmark
+1
+GC: pause 13.59ms. collected 39.052095MB. incr 
+GC: pause 27.05ms. collected 87.515441MB. incr 
+GC: pause 19.61ms. collected 45.334684MB. incr 
+GC: pause 13.22ms. collected 49.349503MB. incr 
+GC: pause 12.22ms. collected 45.098526MB. incr 
+GC: pause 16.72ms. collected 43.556644MB. incr 
+GC: pause 13.64ms. collected 48.038687MB. incr 
+GC: pause 14.86ms. collected 44.020286MB. incr 
+GC: pause 22.51ms. collected 42.436352MB. incr 
+GC: pause 27.94ms. collected 40.187880MB. incr 
+GC: pause 30.10ms. collected 44.933568MB. incr 
+GC: pause 31.08ms. collected 43.187744MB. incr 
+GC: pause 32.02ms. collected 42.534131MB. incr 
+GC: pause 32.06ms. collected 41.432768MB. incr 
+GC: pause 33.02ms. collected 138.763694MB. incr 
+GC: pause 16.44ms. collected 48.938847MB. incr 
+GC: pause 15.52ms. collected 44.183825MB. incr 
+GC: pause 21.51ms. collected 41.776424MB. incr 
+GC: pause 18.50ms. collected 46.259776MB. incr 
+GC: pause 17.07ms. collected 45.830523MB. incr 
+GC: pause 15.84ms. collected 45.517549MB. incr 
+GC: pause 15.81ms. collected 45.733701MB. incr 
+GC: pause 16.30ms. collected 44.788982MB. incr 
+GC: pause 19.47ms. collected 43.523152MB. incr 
+GC: pause 15.55ms. collected 48.864424MB. incr 
+GC: pause 18.82ms. collected 42.290799MB. incr 
+GC: pause 15.02ms. collected 48.922225MB. incr 
+GC: pause 18.58ms. collected 43.929139MB. incr 
+GC: pause 20.17ms. collected 44.332096MB. incr 
+GC: pause 18.09ms. collected 48.892035MB. incr 
+GC: pause 15.89ms. collected 45.158597MB. incr 
+GC: pause 17.85ms. collected 43.883102MB. incr 
+GC: pause 24.44ms. collected 92.610193MB. incr 
+GC: pause 28.56ms. collected 89.128108MB. incr 
+GC: pause 19.24ms. collected 47.877971MB. incr 
+GC: pause 17.73ms. collected 46.927573MB. incr 
+GC: pause 20.55ms. collected 42.761464MB. incr 
+GC: pause 15.60ms. collected 49.959868MB. incr 
+GC: pause 19.60ms. collected 42.383656MB. incr 
+GC: pause 15.97ms. collected 48.684828MB. incr 
+GC: pause 15.67ms. collected 46.113430MB. incr 
+GC: pause 21.34ms. collected 42.829479MB. incr 
+GC: pause 27.17ms. collected 42.472096MB. incr 
+GC: pause 20.49ms. collected 48.719112MB. incr 
+GC: pause 23.37ms. collected 42.814728MB. incr 
+GC: pause 24.88ms. collected 95.413082MB. incr 
+GC: pause 17.40ms. collected 45.878754MB. incr 
+GC: pause 19.64ms. collected 42.733935MB. incr 
+GC: pause 16.13ms. collected 48.779163MB. incr 
+GC: pause 17.07ms. collected 45.132473MB. incr 
+GC: pause 22.98ms. collected 42.045449MB. incr 
+GC: pause 32.30ms. collected 41.353264MB. incr 
+GC: pause 36.30ms. collected 43.598448MB. incr 
+GC: pause 36.26ms. collected 42.278240MB. incr 
+GC: pause 36.55ms. collected 41.421824MB. incr 
+GC: pause 39.36ms. collected 42.854056MB. incr 
+GC: pause 40.01ms. collected 42.575312MB. incr 
+GC: pause 38.99ms. collected 42.123083MB. incr 
+GC: pause 39.32ms. collected 42.800440MB. incr 
+GC: pause 39.35ms. collected 42.359880MB. incr 
+GC: pause 40.28ms. collected 42.231696MB. incr 
+GC: pause 49.01ms. collected 85.323528MB. incr 
+GC: pause 44.67ms. collected 43.307512MB. incr 
+GC: pause 41.09ms. collected 41.929864MB. incr 
+GC: pause 37.40ms. collected 42.497312MB. incr 
+GC: pause 39.82ms. collected 41.978432MB. incr 
+GC: pause 39.61ms. collected 43.621707MB. incr 
+GC: pause 35.34ms. collected 44.478770MB. incr 
+GC: pause 26.69ms. collected 46.702780MB. incr 
+GC: pause 23.44ms. collected 44.117643MB. incr 
+GC: pause 21.76ms. collected 46.823900MB. incr 
+GC: pause 23.01ms. collected 45.712620MB. incr 
+GC: pause 21.40ms. collected 45.757639MB. incr 
+GC: pause 18.32ms. collected 45.875312MB. incr 
+GC: pause 17.33ms. collected 45.875120MB. incr 
+GC: pause 25.63ms. collected 90.686842MB. incr 
+GC: pause 21.06ms. collected 45.994839MB. incr 
+GC: pause 25.99ms. collected 44.135397MB. incr 
+GC: pause 23.08ms. collected 46.344628MB. incr 
+GC: pause 23.53ms. collected 45.744228MB. incr 
+GC: pause 23.41ms. collected 45.595372MB. incr 
+GC: pause 22.63ms. collected 45.300198MB. incr 
+GC: pause 23.02ms. collected 45.755955MB. incr 
+GC: pause 24.32ms. collected 44.674774MB. incr 
+GC: pause 22.79ms. collected 46.354178MB. incr 
+GC: pause 22.86ms. collected 45.159919MB. incr 
+GC: pause 22.11ms. collected 45.785291MB. incr 
+GC: pause 22.80ms. collected 45.416990MB. incr 
+GC: pause 24.15ms. collected 45.353605MB. incr 
+GC: pause 26.86ms. collected 44.548283MB. incr 
+GC: pause 33.03ms. collected 41.880710MB. incr 
+GC: pause 35.05ms. collected 43.863040MB. incr 
+GC: pause 41.76ms. collected 40.702456MB. incr 
+GC: pause 43.13ms. collected 42.777840MB. incr 
+GC: pause 44.69ms. collected 40.833115MB. incr 
+GC: pause 41.50ms. collected 44.380836MB. incr 
+GC: pause 38.24ms. collected 44.171541MB. incr 
+GC: pause 39.69ms. collected 41.674312MB. incr 
+GC: pause 40.18ms. collected 42.305766MB. incr 
+GC: pause 44.54ms. collected 42.879744MB. incr 
+GC: pause 37.60ms. collected 45.277218MB. incr 
+GC: pause 33.62ms. collected 44.863378MB. incr 
+GC: pause 31.96ms. collected 42.491865MB. incr 
+GC: pause 32.88ms. collected 93.605562MB. incr 
+GC: pause 26.54ms. collected 91.913197MB. incr 
+GC: pause 18.50ms. collected 45.677084MB. incr 
+GC: pause 37.32ms. collected 131.867378MB. incr 
+GC: pause 23.30ms. collected 49.326811MB. incr 
+GC: pause 36.22ms. collected 88.202290MB. incr 
+GC: pause 22.18ms. collected 51.437565MB. incr 
+GC: pause 24.54ms. collected 40.808536MB. incr 
+GC: pause 28.68ms. collected 44.518000MB. incr 
+GC: pause 23.04ms. collected 48.996800MB. incr 
+GC: pause 27.08ms. collected 42.464040MB. incr 
+GC: pause 29.74ms. collected 95.899583MB. incr 
+GC: pause 27.89ms. collected 41.109584MB. incr 
+GC: pause 32.54ms. collected 43.062984MB. incr 
+GC: pause 36.76ms. collected 41.894672MB. incr 
+GC: pause 35.48ms. collected 44.999127MB. incr 
+GC: pause 32.93ms. collected 41.978940MB. incr 
+GC: pause 34.49ms. collected 139.397961MB. incr 
+GC: pause 25.24ms. collected 93.130369MB. incr 
+GC: pause 24.31ms. collected 43.923324MB. incr 
+GC: pause 21.74ms. collected 45.319811MB. incr 
+GC: pause 27.97ms. collected 93.002885MB. incr 
+GC: pause 21.91ms. collected 45.796903MB. incr 
+GC: pause 22.17ms. collected 44.273496MB. incr 
+GC: pause 24.73ms. collected 43.721272MB. incr 
+GC: pause 19.38ms. collected 48.935614MB. incr 
+2
+GC: pause 12.30ms. collected 0.755000MB. incr 
+3
+GC: pause 11.35ms. collected 0.341040MB. incr 
+4
+GC: pause 4.82ms. collected 0.388080MB. incr 
+5
+GC: pause 4.85ms. collected 0.384832MB. incr 
+6
+GC: pause 4.75ms. collected 0.384192MB. incr 
+7
+GC: pause 4.82ms. collected 0.385904MB. incr 
+8
+GC: pause 4.97ms. collected 0.384496MB. incr 
+9
+GC: pause 4.83ms. collected 0.384528MB. incr 
+10
+GC: pause 4.95ms. collected 0.384496MB. incr 
+1
+GC: pause 4.81ms. collected 0.396288MB. incr 
+2
+GC: pause 4.80ms. collected 0.386352MB. incr 
+3
+GC: pause 4.83ms. collected 0.386176MB. incr 
+4
+GC: pause 4.82ms. collected 0.385152MB. incr 
+5
+GC: pause 4.89ms. collected 0.385312MB. incr 
+6
+GC: pause 4.77ms. collected 0.384784MB. incr 
+7
+GC: pause 4.94ms. collected 0.386192MB. incr 
+8
+GC: pause 5.17ms. collected 1.032608MB. incr 
+9
+GC: pause 4.84ms. collected 0.504512MB. incr 
+10
+GC: pause 4.54ms. collected 0.378176MB. incr 
+11
+GC: pause 4.65ms. collected 0.378416MB. incr 
+12
+GC: pause 4.49ms. collected 0.378576MB. incr 
+13
+GC: pause 4.78ms. collected 0.378512MB. incr 
+14
+GC: pause 4.81ms. collected 0.377680MB. incr 
+15
+GC: pause 4.52ms. collected 0.378416MB. incr 
+16
+GC: pause 4.48ms. collected 0.378480MB. incr 
+17
+GC: pause 4.70ms. collected 0.378512MB. incr 
+18
+GC: pause 4.56ms. collected 0.378368MB. incr 
+19
+GC: pause 4.84ms. collected 0.378016MB. incr 
+20
+GC: pause 4.74ms. collected 0.378480MB. incr 
+21
+GC: pause 4.63ms. collected 0.378704MB. incr 
+22
+GC: pause 4.63ms. collected 0.377984MB. incr 
+23
+GC: pause 4.71ms. collected 0.378416MB. incr 
+24
+GC: pause 5.08ms. collected 1.031216MB. incr 
+25
+GC: pause 5.00ms. collected 0.501168MB. incr 
+26
+GC: pause 4.72ms. collected 0.378384MB. incr 
+27
+GC: pause 4.85ms. collected 0.378512MB. incr 
+28
+GC: pause 4.54ms. collected 0.377584MB. incr 
+29
+GC: pause 4.64ms. collected 0.378128MB. incr 
+30
+GC: pause 4.52ms. collected 0.378288MB. incr 
+31
+GC: pause 4.47ms. collected 0.378320MB. incr 
+32
+GC: pause 4.39ms. collected 0.377680MB. incr 
+33
+GC: pause 4.40ms. collected 0.378320MB. incr 
+34
+GC: pause 4.48ms. collected 0.378288MB. incr 
+35
+GC: pause 4.40ms. collected 0.378320MB. incr 
+36
+GC: pause 4.74ms. collected 0.377776MB. incr 
+37
+GC: pause 4.62ms. collected 0.378416MB. incr 
+38
+GC: pause 4.41ms. collected 0.378096MB. incr 
+39
+GC: pause 4.41ms. collected 0.378320MB. incr 
+40
+GC: pause 4.93ms. collected 1.030912MB. incr 
+41
+GC: pause 4.60ms. collected 0.500880MB. incr 
+42
+GC: pause 4.42ms. collected 0.377392MB. incr 
+43
+GC: pause 4.58ms. collected 0.378128MB. incr 
+44
+GC: pause 4.48ms. collected 0.378192MB. incr 
+45
+GC: pause 4.42ms. collected 0.378032MB. incr 
+46
+GC: pause 4.87ms. collected 0.377584MB. incr 
+47
+GC: pause 4.57ms. collected 0.378416MB. incr 
+48
+GC: pause 4.55ms. collected 0.378000MB. incr 
+49
+GC: pause 4.41ms. collected 0.377824MB. incr 
+50
+GC: pause 4.44ms. collected 0.377888MB. incr 
+51
+GC: pause 4.34ms. collected 0.378032MB. incr 
+52
+GC: pause 4.56ms. collected 0.377696MB. incr 
+53
+GC: pause 4.42ms. collected 0.378128MB. incr 
+54
+GC: pause 4.62ms. collected 0.377984MB. incr 
+55
+GC: pause 4.40ms. collected 0.378224MB. incr 
+56
+GC: pause 4.92ms. collected 1.030640MB. incr 
+57
+GC: pause 4.59ms. collected 0.501856MB. incr 
+58
+GC: pause 4.55ms. collected 0.378192MB. incr 
+59
+GC: pause 4.47ms. collected 0.377728MB. incr 
+60
+GC: pause 4.48ms. collected 0.377792MB. incr 
+61
+GC: pause 4.57ms. collected 0.378224MB. incr 
+62
+GC: pause 4.36ms. collected 0.377696MB. incr 
+63
+GC: pause 4.46ms. collected 0.378128MB. incr 
+64
+GC: pause 4.52ms. collected 0.377984MB. incr 
+65
+GC: pause 4.39ms. collected 0.377920MB. incr 
+66
+GC: pause 4.70ms. collected 0.378096MB. incr 
+67
+GC: pause 4.42ms. collected 0.378128MB. incr 
+68
+GC: pause 4.36ms. collected 0.377200MB. incr 
+69
+GC: pause 4.67ms. collected 0.378032MB. incr 
+70
+GC: pause 4.45ms. collected 0.378096MB. incr 
+71
+GC: pause 4.79ms. collected 0.378224MB. incr 
+72
+GC: pause 5.09ms. collected 1.030640MB. incr 
+73
+GC: pause 4.87ms. collected 0.500688MB. incr 
+74
+GC: pause 4.51ms. collected 0.377296MB. incr 
+75
+GC: pause 4.45ms. collected 0.377744MB. incr 
+76
+GC: pause 4.32ms. collected 0.377808MB. incr 
+77
+GC: pause 4.31ms. collected 0.377728MB. incr 
+78
+GC: pause 4.32ms. collected 0.377696MB. incr 
+79
+GC: pause 4.50ms. collected 0.378032MB. incr 
+80
+GC: pause 4.42ms. collected 0.377696MB. incr 
+81
+GC: pause 4.30ms. collected 0.378032MB. incr 
+82
+GC: pause 4.28ms. collected 0.377296MB. incr 
+83
+GC: pause 4.31ms. collected 0.377840MB. incr 
+84
+GC: pause 4.68ms. collected 0.378000MB. incr 
+85
+GC: pause 4.43ms. collected 0.377728MB. incr 
+86
+GC: pause 4.45ms. collected 0.377696MB. incr 
+87
+GC: pause 4.75ms. collected 0.378128MB. incr 
+88
+GC: pause 5.07ms. collected 1.030832MB. incr 
+89
+GC: pause 5.09ms. collected 0.501760MB. incr 
+90
+GC: pause 4.75ms. collected 0.378000MB. incr 
+91
+GC: pause 4.54ms. collected 0.377632MB. incr 
+92
+GC: pause 4.63ms. collected 0.377408MB. incr 
+93
+GC: pause 4.65ms. collected 0.377440MB. incr 
+94
+GC: pause 4.56ms. collected 0.377712MB. incr 
+95
+GC: pause 4.58ms. collected 0.377744MB. incr 
+96
+GC: pause 4.54ms. collected 0.377104MB. incr 
+97
+GC: pause 4.44ms. collected 0.377744MB. incr 
+98
+GC: pause 4.41ms. collected 0.377408MB. incr 
+99
+GC: pause 4.96ms. collected 0.377744MB. incr 
+100
+GC: pause 4.66ms. collected 0.377408MB. incr 
+101
+GC: pause 4.56ms. collected 0.377440MB. incr 
+102
+GC: pause 4.42ms. collected 0.377808MB. incr 
+103
+GC: pause 4.07ms. collected 0.377728MB. incr 
+104
+GC: pause 4.93ms. collected 1.030832MB. incr 
+105
+GC: pause 4.50ms. collected 0.500096MB. incr 
+106
+GC: pause 4.40ms. collected 0.377504MB. incr 
+107
+GC: pause 4.55ms. collected 0.377840MB. incr 
+108
+GC: pause 4.27ms. collected 0.377216MB. incr 
+109
+GC: pause 4.12ms. collected 0.377840MB. incr 
+110
+GC: pause 4.08ms. collected 0.377296MB. incr 
+111
+GC: pause 4.24ms. collected 0.377648MB. incr 
+112
+GC: pause 5.04ms. collected 0.377520MB. incr 
+113
+GC: pause 4.65ms. collected 0.377632MB. incr 
+114
+GC: pause 4.82ms. collected 0.377888MB. incr 
+115
+GC: pause 4.51ms. collected 0.377536MB. incr 
+116
+GC: pause 4.62ms. collected 0.377424MB. incr 
+117
+GC: pause 4.50ms. collected 0.377552MB. incr 
+118
+GC: pause 4.30ms. collected 0.377008MB. incr 
+119
+GC: pause 4.25ms. collected 0.377552MB. incr 
+120
+GC: pause 5.23ms. collected 1.030352MB. incr 
+121
+GC: pause 4.73ms. collected 0.501472MB. incr 
+122
+GC: pause 4.38ms. collected 0.377408MB. incr 
+123
+GC: pause 4.22ms. collected 0.377744MB. incr 
+124
+GC: pause 4.13ms. collected 0.377008MB. incr 
+125
+GC: pause 4.00ms. collected 0.377552MB. incr 
+126
+GC: pause 3.97ms. collected 0.377312MB. incr 
+127
+GC: pause 4.19ms. collected 0.377552MB. incr 
+128
+GC: pause 4.02ms. collected 0.377408MB. incr 
+129
+GC: pause 4.14ms. collected 0.377344MB. incr 
+130
+GC: pause 3.90ms. collected 0.377520MB. incr 
+131
+GC: pause 4.42ms. collected 0.377344MB. incr 
+132
+GC: pause 4.45ms. collected 0.377216MB. incr 
+133
+GC: pause 3.84ms. collected 0.377344MB. incr 
+134
+GC: pause 4.11ms. collected 0.377520MB. incr 
+135
+GC: pause 4.09ms. collected 0.377536MB. incr 
+136
+GC: pause 4.71ms. collected 1.030944MB. incr 
+137
+GC: pause 4.65ms. collected 0.500592MB. incr 
+138
+GC: pause 6.00ms. collected 0.377104MB. incr 
+139
+GC: pause 4.80ms. collected 0.377840MB. incr 
+140
+GC: pause 4.42ms. collected 0.377600MB. incr 
+141
+GC: pause 4.38ms. collected 0.377744MB. incr 
+142
+GC: pause 4.16ms. collected 0.377008MB. incr 
+143
+GC: pause 4.14ms. collected 0.377552MB. incr 
+144
+GC: pause 4.40ms. collected 0.377616MB. incr 
+145
+GC: pause 4.20ms. collected 0.377152MB. incr 
+146
+GC: pause 4.18ms. collected 0.377216MB. incr 
+147
+GC: pause 4.31ms. collected 0.377344MB. incr 
+148
+GC: pause 4.42ms. collected 0.377520MB. incr 
+149
+GC: pause 4.28ms. collected 0.377344MB. incr 
+150
+GC: pause 4.10ms. collected 0.377120MB. incr 
+151
+GC: pause 3.98ms. collected 0.377248MB. incr 
+152
+GC: pause 4.68ms. collected 1.030656MB. incr 
+153
+GC: pause 4.46ms. collected 0.501072MB. incr 
+154
+GC: pause 4.22ms. collected 0.377424MB. incr 
+155
+GC: pause 4.03ms. collected 0.377152MB. incr 
+156
+GC: pause 4.38ms. collected 0.377216MB. incr 
+157
+GC: pause 4.45ms. collected 0.377344MB. incr 
+158
+GC: pause 4.24ms. collected 0.377424MB. incr 
+159
+GC: pause 4.13ms. collected 0.377248MB. incr 
+160
+GC: pause 4.49ms. collected 0.377312MB. incr 
+161
+GC: pause 4.09ms. collected 0.377152MB. incr 
+162
+GC: pause 3.96ms. collected 0.377520MB. incr 
+163
+GC: pause 4.23ms. collected 0.377744MB. incr 
+164
+GC: pause 4.42ms. collected 0.377008MB. incr 
+165
+GC: pause 4.25ms. collected 0.377456MB. incr 
+166
+GC: pause 4.23ms. collected 0.377216MB. incr 
+167
+GC: pause 4.16ms. collected 0.377648MB. incr 
+168
+GC: pause 5.03ms. collected 1.030240MB. incr 
+169
+GC: pause 4.54ms. collected 0.500592MB. incr 
+170
+GC: pause 4.31ms. collected 0.377008MB. incr 
+171
+GC: pause 4.85ms. collected 0.377456MB. incr 
+172
+GC: pause 4.61ms. collected 0.377120MB. incr 
+173
+GC: pause 4.42ms. collected 0.377648MB. incr 
+174
+GC: pause 4.73ms. collected 0.377200MB. incr 
+175
+GC: pause 4.67ms. collected 0.377552MB. incr 
+176
+GC: pause 4.59ms. collected 0.377712MB. incr 
+177
+GC: pause 4.31ms. collected 0.377440MB. incr 
+178
+GC: pause 4.28ms. collected 0.377312MB. incr 
+179
+GC: pause 4.12ms. collected 0.377248MB. incr 
+180
+GC: pause 3.96ms. collected 0.377616MB. incr 
+181
+GC: pause 3.92ms. collected 0.377248MB. incr 
+182
+GC: pause 4.64ms. collected 0.377312MB. incr 
+183
+GC: pause 4.52ms. collected 0.377152MB. incr 
+184
+GC: pause 5.05ms. collected 1.030464MB. incr 
+185
+GC: pause 4.51ms. collected 0.501120MB. incr 
+186
+GC: pause 4.78ms. collected 0.377616MB. incr 
+187
+GC: pause 4.75ms. collected 0.377536MB. incr 
+188
+GC: pause 4.91ms. collected 0.377600MB. incr 
+189
+GC: pause 4.75ms. collected 0.377840MB. incr 
+190
+GC: pause 4.51ms. collected 0.377696MB. incr 
+191
+GC: pause 4.40ms. collected 0.377936MB. incr 
+192
+GC: pause 4.82ms. collected 0.377504MB. incr 
+193
+GC: pause 4.69ms. collected 0.377536MB. incr 
+194
+GC: pause 4.81ms. collected 0.377520MB. incr 
+195
+GC: pause 4.49ms. collected 0.377344MB. incr 
+196
+GC: pause 4.49ms. collected 0.377216MB. incr 
+197
+GC: pause 4.49ms. collected 0.377440MB. incr 
+198
+GC: pause 4.08ms. collected 0.377712MB. incr 
+199
+GC: pause 4.94ms. collected 0.377744MB. incr 
+200
+GC: pause 5.18ms. collected 1.030352MB. incr 
+201
+GC: pause 4.95ms. collected 0.500400MB. incr 
+202
+GC: pause 4.71ms. collected 0.377104MB. incr 
+203
+GC: pause 4.57ms. collected 0.377744MB. incr 
+204
+GC: pause 4.42ms. collected 0.377504MB. incr 
+205
+GC: pause 4.50ms. collected 0.377936MB. incr 
+206
+GC: pause 4.36ms. collected 0.377408MB. incr 
+207
+GC: pause 4.44ms. collected 0.377344MB. incr 
+208
+GC: pause 4.80ms. collected 0.377424MB. incr 
+209
+GC: pause 4.54ms. collected 0.377248MB. incr 
+210
+GC: pause 4.40ms. collected 0.377312MB. incr 
+211
+GC: pause 4.68ms. collected 0.377248MB. incr 
+212
+GC: pause 4.39ms. collected 0.377712MB. incr 
+213
+GC: pause 4.34ms. collected 0.377440MB. incr 
+214
+GC: pause 4.24ms. collected 0.377312MB. incr 
+215
+GC: pause 4.33ms. collected 0.377248MB. incr 
+216
+GC: pause 5.37ms. collected 1.030656MB. incr 
+217
+GC: pause 4.82ms. collected 0.501568MB. incr 
+218
+GC: pause 4.62ms. collected 0.377600MB. incr 
+219
+GC: pause 4.52ms. collected 0.377744MB. incr 
+220
+GC: pause 4.87ms. collected 0.377104MB. incr 
+221
+GC: pause 4.50ms. collected 0.377744MB. incr 
+222
+GC: pause 4.55ms. collected 0.377328MB. incr 
+223
+GC: pause 4.36ms. collected 0.377552MB. incr 
+224
+GC: pause 4.46ms. collected 0.377520MB. incr 
+225
+GC: pause 4.29ms. collected 0.377632MB. incr 
+226
+GC: pause 4.55ms. collected 0.377712MB. incr 
+227
+GC: pause 4.45ms. collected 0.377536MB. incr 
+228
+GC: pause 4.30ms. collected 0.377712MB. incr 
+229
+GC: pause 4.24ms. collected 0.378048MB. incr 
+230
+GC: pause 4.29ms. collected 0.377712MB. incr 
+231
+GC: pause 4.42ms. collected 0.377936MB. incr 
+232
+GC: pause 4.97ms. collected 1.030352MB. incr 
+233
+GC: pause 4.90ms. collected 0.500400MB. incr 
+234
+GC: pause 4.65ms. collected 0.377408MB. incr 
+235
+GC: pause 4.62ms. collected 0.377552MB. incr 
+236
+GC: pause 4.46ms. collected 0.377920MB. incr 
+237
+GC: pause 4.47ms. collected 0.377440MB. incr 
+238
+GC: pause 4.62ms. collected 0.377504MB. incr 
+239
+GC: pause 4.37ms. collected 0.378144MB. incr 
+240
+GC: pause 4.32ms. collected 0.377808MB. incr 
+241
+GC: pause 4.61ms. collected 0.377744MB. incr 
+242
+GC: pause 4.54ms. collected 0.377504MB. incr 
+243
+GC: pause 4.50ms. collected 0.377632MB. incr 
+244
+GC: pause 4.39ms. collected 0.377824MB. incr 
+245
+GC: pause 4.92ms. collected 0.378032MB. incr 
+246
+GC: pause 4.79ms. collected 0.377312MB. incr 
+247
+GC: pause 4.91ms. collected 0.377760MB. incr 
+248
+GC: pause 4.79ms. collected 0.762480MB. incr 
+249
+GC: pause 4.48ms. collected 0.448032MB. incr 
+250
+GC: pause 4.32ms. collected 0.377408MB. incr 
+251
+GC: pause 4.37ms. collected 0.377952MB. incr 
+252
+GC: pause 4.42ms. collected 0.377504MB. incr 
+253
+GC: pause 4.42ms. collected 0.377760MB. incr 
+254
+GC: pause 4.41ms. collected 0.377824MB. incr 
+255
+GC: pause 4.47ms. collected 0.377840MB. incr 
+256
+GC: pause 4.44ms. collected 0.377792MB. incr 
+257
+GC: pause 4.40ms. collected 0.377744MB. incr 
+258
+GC: pause 4.36ms. collected 0.377328MB. incr 
+259
+GC: pause 4.34ms. collected 0.377552MB. incr 
+260
+GC: pause 4.20ms. collected 0.377104MB. incr 
+261
+GC: pause 4.25ms. collected 0.377760MB. incr 
+262
+GC: pause 4.85ms. collected 0.377824MB. incr 
+263
+GC: pause 4.69ms. collected 0.377648MB. incr 
+264
+GC: pause 4.80ms. collected 0.762384MB. incr 
+265
+GC: pause 4.48ms. collected 0.446512MB. incr 
+266
+GC: pause 4.18ms. collected 0.377104MB. incr 
+267
+GC: pause 3.96ms. collected 0.377744MB. incr 
+268
+GC: pause 3.86ms. collected 0.377728MB. incr 
+GC: pause 18.25ms. collected 43.959328MB. incr 
+GC: pause 21.25ms. collected 44.461464MB. incr 
+WARNING: Force throwing a SIGINT
+fatal: error thrown and no exception handler available.
+InterruptException()
+_ZN4llvm18RegPressureTracker19discoverLiveInOrOutENS_16RegisterMaskPairERNS_15SmallVectorImplIS1_EE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm18RegPressureTracker6recedeERKNS_16RegisterOperandsEPNS_15SmallVectorImplINS_16RegisterMaskPairEEE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm17ScheduleDAGInstrs15buildSchedGraphEPNS_9AAResultsEPNS_18RegPressureTrackerEPNS_13PressureDiffsEPNS_13LiveIntervalsEb at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm17ScheduleDAGMILive23buildDAGWithRegPressureEv at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm17ScheduleDAGMILive8scheduleEv at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN12_GLOBAL__N_120MachineSchedulerBase15scheduleRegionsERN4llvm17ScheduleDAGInstrsEb at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN12_GLOBAL__N_116MachineScheduler20runOnMachineFunctionERN4llvm15MachineFunctionE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm13FPPassManager11runOnModuleERNS_6ModuleE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm6legacy15PassManagerImpl3runERNS_6ModuleE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc14SimpleCompilerclERNS_6ModuleE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+operator() at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:1194
+_ZN4llvm3orc14IRCompileLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+emit at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:619
+_ZN4llvm3orc31BasicIRLayerMaterializationUnit11materializeESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc19MaterializationTask3runEv at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm6detail18UniqueFunctionBaseIvJSt10unique_ptrINS_3orc4TaskESt14default_deleteIS4_EEEE8CallImplIPFvS7_EEEvPvRS7_ at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession22dispatchOutstandingMUsEv at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession17OL_completeLookupESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EESt10shared_ptrINS0_23AsynchronousSymbolQueryEESt8functionIFvRKNS_8DenseMapIPNS0_8JITDylibENS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISF_vEEEENSG_ISD_vEENS_6detail12DenseMapPairISD_SI_EEEEEE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc25InProgressFullLookupState8completeESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession19OL_applyQueryPhase1ESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EENS_5ErrorE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupENS0_10LookupKindERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS8_EENS0_15SymbolLookupSetENS0_11SymbolStateENS_15unique_functionIFvNS_8ExpectedINS_8DenseMapINS0_15SymbolStringPtrENS_18JITEvaluatedSymbolENS_12DenseMapInfoISI_vEENS_6detail12DenseMapPairISI_SJ_EEEEEEEEESt8functionIFvRKNSH_IS6_NS_8DenseSetISI_SL_EENSK_IS6_vEENSN_IS6_SV_EEEEEE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS7_EERKNS0_15SymbolLookupSetENS0_10LookupKindENS0_11SymbolStateESt8functionIFvRKNS_8DenseMapIS5_NS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISK_vEEEENSL_IS5_vEENS_6detail12DenseMapPairIS5_SN_EEEEEE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS7_EENS0_15SymbolStringPtrENS0_11SymbolStateE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupENS_8ArrayRefIPNS0_8JITDylibEEENS0_15SymbolStringPtrENS0_11SymbolStateE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupENS_8ArrayRefIPNS0_8JITDylibEEENS_9StringRefENS0_11SymbolStateE at /home/pxl-th/bin/julia-1.9.0-beta4/bin/../lib/julia/libLLVM-14jl.so (unknown line)
+addModule at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:1392
+jl_add_to_ee at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:1787
+jl_add_to_ee at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:1766
+jl_add_to_ee at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:1766
+_jl_compile_codeinst at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:241
+jl_generate_fptr_impl at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jitlayers.cpp:447
+jl_compile_method_internal at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2286 [inlined]
+jl_compile_method_internal at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2204
+_jl_invoke at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2681 [inlined]
+ijl_apply_generic at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2871
+show_exception_stack at ./errorshow.jl:895
+display_error at ./client.jl:111
+unknown function (ip: 0x7fd882fe63c6)
+_jl_invoke at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2689 [inlined]
+ijl_apply_generic at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2871
+display_error at ./client.jl:114
+unknown function (ip: 0x7fd882fe5d82)
+_jl_invoke at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2689 [inlined]
+ijl_apply_generic at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2871
+jl_apply at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/julia.h:1874 [inlined]
+jl_f__call_latest at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/builtins.c:774
+#invokelatest#2 at ./essentials.jl:816 [inlined]
+invokelatest at ./essentials.jl:813 [inlined]
+_start at ./client.jl:524
+jfptr__start_55341.clone_1 at /home/pxl-th/bin/julia-1.9.0-beta4/lib/julia/sys.so (unknown line)
+_jl_invoke at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2689 [inlined]
+ijl_apply_generic at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/gf.c:2871
+jl_apply at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/julia.h:1874 [inlined]
+true_main at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jlapi.c:573
+jl_repl_entrypoint at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jlapi.c:717
+main at julia (unknown line)
+unknown function (ip: 0x7fd98922350f)
+__libc_start_main at /lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x401098)
+ERROR:  59.766401 seconds (102.78 M allocations: 6.246 GiB, 5.82% gc time, 67.08% compilation time: <1% of which was recompilation)
+WARNING: Force throwing a SIGINT
+GC: pause 18.07ms. collected 74.812645MB. incr 
+fatal: error thrown and no exception handler available.
+InterruptException()
+unknown function (ip: 0x7fd98929de51)
+__libc_free at /lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+_ZNSt8_Rb_treeINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESt4pairIKS5_S5_ESt10_Select1stIS8_ESt4lessIS5_ESaIS8_EE8_M_eraseEPSt13_Rb_tree_nodeIS8_E at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt8_Rb_treeINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESt4pairIKS5_S5_ESt10_Select1stIS8_ESt4lessIS5_ESaIS8_EE8_M_eraseEPSt13_Rb_tree_nodeIS8_E at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt8_Rb_treeINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESt4pairIKS5_S5_ESt10_Select1stIS8_ESt4lessIS5_ESaIS8_EE8_M_eraseEPSt13_Rb_tree_nodeIS8_E at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt8_Rb_treeINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESt4pairIKS5_S5_ESt10_Select1stIS8_ESt4lessIS5_ESaIS8_EE8_M_eraseEPSt13_Rb_tree_nodeIS8_E at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN7Tensile19ContractionSolutionD2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN7Tensile21SingleSolutionLibraryINS_18ContractionProblemENS_19ContractionSolutionEED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN7Tensile8Matching22DistanceMatchingCommonISt5arrayIlLm3EENS_18ContractionProblemESt10shared_ptrINS_15SolutionLibraryIS4_NS_19ContractionSolutionEEEES5_IS7_ENS0_17EuclideanDistanceIS3_EEED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN7Tensile22ProblemMatchingLibraryINS_18ContractionProblemENS_19ContractionSolutionEED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt6vectorISt4pairIN7Tensile16ProblemPredicateINS1_18ContractionProblemEEESt10shared_ptrINS1_15SolutionLibraryIS3_NS1_19ContractionSolutionEEEEESaISA_EED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt6vectorISt4pairIN7Tensile16ProblemPredicateINS1_18ContractionProblemEEESt10shared_ptrINS1_15SolutionLibraryIS3_NS1_19ContractionSolutionEEEEESaISA_EED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt6vectorISt4pairIN7Tensile16ProblemPredicateINS1_18ContractionProblemEEESt10shared_ptrINS1_15SolutionLibraryIS3_NS1_19ContractionSolutionEEEEESaISA_EED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt6vectorISt4pairIN7Tensile16ProblemPredicateINS1_18ContractionProblemEEESt10shared_ptrINS1_15SolutionLibraryIS3_NS1_19ContractionSolutionEEEEESaISA_EED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt10_HashtableINSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESt4pairIKS5_St10shared_ptrIN7Tensile15SolutionLibraryINS9_18ContractionProblemENS9_19ContractionSolutionEEEEESaISF_ENSt8__detail10_Select1stESt8equal_toIS5_ESt4hashIS5_ENSH_18_Mod_range_hashingENSH_20_Default_ranged_hashENSH_20_Prime_rehash_policyENSH_17_Hashtable_traitsILb1ELb0ELb1EEEED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN7Tensile17ProblemMapLibraryINS_18ContractionProblemENS_19ContractionSolutionENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZNSt6vectorISt4pairIN7Tensile17HardwarePredicateESt10shared_ptrINS1_15SolutionLibraryINS1_18ContractionProblemENS1_19ContractionSolutionEEEEESaIS9_EED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN7Tensile14CachingLibraryINS_18ContractionProblemENS_19ContractionSolutionEED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN7Tensile21MasterSolutionLibraryINS_18ContractionProblemENS_19ContractionSolutionEED2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+_ZN12_GLOBAL__N_111TensileHostD2Ev at /home/pxl-th/.julia/artifacts/e00a8fa8674dd0ebdb51a59fdc513ab8e5001e5c/lib/librocblas.so (unknown line)
+unknown function (ip: 0x7fd98923e4a4)
+exit at /lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+ijl_exit at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/init.c:208
+ijl_no_exc_handler at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/task.c:712
+true_main at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jlapi.c:577
+jl_repl_entrypoint at /cache/build/default-amdci4-0/julialang/julia-release-1-dot-9/src/jlapi.c:717
+main at julia (unknown line)
+unknown function (ip: 0x7fd98922350f)
+__libc_start_main at /lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x401098)
