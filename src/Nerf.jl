@@ -104,7 +104,7 @@ function main()
         i % 1000 == 0 || continue
 
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-            model(points, directions)
+            eager_deallocation_eval(model, points, directions)
         end
         save("image-$i.png", RGB.(to_image(renderer.buffer)))
     end
@@ -124,7 +124,7 @@ function render_benchmark(renderer::Renderer, trainer::Trainer, n::Int)
     for i in 1:n
         Core.println(i)
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-            trainer.model(points, directions)
+            eager_deallocation_eval(trainer.model, points, directions)
         end
     end
 end
@@ -135,7 +135,7 @@ function benchmark()
     model = BasicModel(BasicField(DEVICE))
     trainer = Trainer(model, dataset)
 
-    GC.enable_logging(true)
+    # GC.enable_logging(true)
 
     Core.println("Trainer benchmark")
 

@@ -57,6 +57,27 @@ function (b::BasicField)(
     vcat(rgb, reshape(backbone[1, :], 1, :))
 end
 
+# TODO once AMDGPU supports eager finalization for arrays, we can remove it.
+function eager_deallocation_eval(
+    b::BasicField, points::P, directions::D, θ,
+) where {
+    P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
+}
+    encoded_points = b.grid_encoding(points, θ.θge)
+    encoded_directions = spherical_harmonics(directions)
+    backbone = eager_deallocation_eval(b.density_mlp, encoded_points, θ.θdensity)
+    unsafe_free!(encoded_points)
+
+    color_input = vcat(backbone, encoded_directions)
+    unsafe_free!(encoded_directions)
+    rgb = eager_deallocation_eval(b.color_mlp, color_input, θ.θcolor)
+    unsafe_free!(color_input)
+
+    rgba = vcat(rgb, reshape(backbone[1, :], 1, :))
+    unsafe_free!.((rgb, backbone))
+    rgba
+end
+
 function density(b::BasicField, points::P, θ, mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
     _check_mode(mode)
     if mode == Val{:NOIG}()
@@ -109,6 +130,12 @@ function (m::BasicModel)(points::P, directions::D) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
     m.field(points, directions, m.θ)
+end
+
+function eager_deallocation_eval(m::BasicModel, points::P, directions::D) where {
+    P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
+}
+    eager_deallocation_eval(m.field, points, directions, m.θ)
 end
 
 function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
