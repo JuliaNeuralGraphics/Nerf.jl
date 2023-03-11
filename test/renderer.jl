@@ -23,14 +23,13 @@
 
     camera = Nerf.Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Nerf.Renderer(dev, camera, trainer.bbox, trainer.cone)
-    Nerf.set_projection!(renderer.camera, Nerf.get_pose(dataset, 31)...)
-    Nerf.render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-        # model(points, directions)
-        ones(dev, Float32, (4, size(points, 2))) .* 0.5f0
-        # vcat(
-        #     rand(dev, Float32, (3, size(points, 2))),
-        #     ones(dev, Float32, (1, size(points, 2))),
-        # )
+
+    for i in 1:10
+        Nerf.set_projection!(camera, Nerf.get_pose(dataset, i)...)
+        Nerf.render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
+            # model(points, directions)
+            ones(dev, Float32, (4, size(points, 2))) .* 0.5f0
+        end
+        save("image-$i.png", RGB.(Nerf.to_image(renderer.buffer)))
     end
-    save("image.png", RGB.(Nerf.to_image(renderer.buffer)))
 end

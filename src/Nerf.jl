@@ -94,15 +94,16 @@ function main()
     trainer = Trainer(model, dataset)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    set_projection!(camera, get_pose(dataset, 1)...)
     renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
 
-    for i in 1:10_000
+    for i in 1:20_000
         loss = step!(trainer)
         @show i, loss
 
         i % 1000 == 0 || continue
 
+        pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
+        set_projection!(camera, get_pose(dataset, pose_idx)...)
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
             model(points, directions)
         end
@@ -135,7 +136,7 @@ function benchmark()
     model = BasicModel(BasicField(DEVICE))
     trainer = Trainer(model, dataset)
 
-    GC.enable_logging(true)
+    # GC.enable_logging(true)
 
     Core.println("Trainer benchmark")
 

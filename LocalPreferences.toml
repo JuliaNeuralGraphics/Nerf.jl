@@ -1,2 +1,0 @@
-[Nerf]
-backend = "ROC" # Available options: ROC, CUDA.

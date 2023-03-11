@@ -1,4 +1,5 @@
-const BACKEND = @load_preference("backend", "CPU")
+# Supported values are: AMD, CUDA.
+const BACKEND::String = @load_preference("backend", "AMD")
 
 to_device(::CPU, x) = Array(x)
 type_from_device(::CPU) = Array
@@ -62,6 +63,4 @@ elseif BACKEND == "CUDA"
     Base.fill(::CUDADevice, value, shape) = CUDA.fill(value, shape)
 
     unsafe_free!(x::T) where T <: CuArray = CUDA.unsafe_free!(x)
-else
-    const DEVICE = CPU()
 end
