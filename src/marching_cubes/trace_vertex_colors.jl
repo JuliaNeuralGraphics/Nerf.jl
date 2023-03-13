@@ -45,7 +45,7 @@ function init_rays_from_vertices_and_normals!(
     resolution::UInt32 = get_resolution(occupancy)
     wait(init_advance!(dev)(
         rays, renderer.cone, renderer.bbox,
-        occupancy.binary, n_levels, resolution; ndrange=n_rays))
+        occupancy.binary, n_levels, resolution, UInt32(0); ndrange=n_rays))
     rays
 end
 
