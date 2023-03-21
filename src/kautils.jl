@@ -1,5 +1,5 @@
-# Supported values are: AMD, CUDA.
-const BACKEND::String = @load_preference("backend", "AMD")
+# Supported values are: ROC, CUDA.
+const BACKEND::String = @load_preference("backend", "ROC")
 
 to_device(::CPU, x) = Array(x)
 type_from_device(::CPU) = Array
