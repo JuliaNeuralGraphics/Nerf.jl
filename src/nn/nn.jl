@@ -27,6 +27,17 @@ function (d::Dense{T, F})(x, θ) where {T, F}
     d.activation.(θ * x)
 end
 
+function eager_deallocation_eval(d::Dense{T, typeof(identity)}, x, θ) where T
+    θ * x
+end
+
+function eager_deallocation_eval(d::Dense{T, F}, x, θ) where {T, F}
+    y1 = θ * x
+    y2 = d.activation.(y1)
+    unsafe_free!(y1)
+    return y2
+end
+
 get_precision(::Dense{T, F}) where {T, F} = T
 
 function init(d::Dense)
@@ -69,6 +80,31 @@ function recursive_apply(x, l, c::Tuple, θₗ, θ)
 end
 function recursive_apply(x, l, ::Tuple{}, θₗ, ::Tuple{})
     l(x, θₗ)
+end
+
+function eager_deallocation_eval(c::Chain, x, θ)
+    recursive_apply!(
+        x, first(c.layers), Base.tail(c.layers), first(θ), Base.tail(θ);
+        free_input=false) # Do not free input, since it might be neede elsewhere.
+end
+
+function recursive_apply!(x, l, c::Tuple, θₗ, θ; free_input::Bool)
+    y = eager_deallocation_eval(l, x, θₗ)
+    if free_input
+        BACKEND == "ROC" && AMDGPU.wait!(y)
+        unsafe_free!(x)
+    end
+    recursive_apply!(
+        y, first(c), Base.tail(c), first(θ), Base.tail(θ);
+        free_input=true) # Free all intermediate inputs.
+end
+function recursive_apply!(x, l, ::Tuple{}, θₗ, ::Tuple{}; free_input::Bool)
+    y = eager_deallocation_eval(l, x, θₗ)
+    if free_input
+        BACKEND == "ROC" && AMDGPU.wait!(y)
+        unsafe_free!(x)
+    end
+    return y
 end
 
 function glorot_uniform(dims, ::Type{T} = Float32; gain = one(T)) where T

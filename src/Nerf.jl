@@ -105,7 +105,7 @@ function main()
         pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
         set_projection!(camera, get_pose(dataset, pose_idx)...)
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-            model(points, directions)
+            eager_deallocation_eval(model, points, directions)
         end
         save("image-$i.png", RGB.(to_image(renderer.buffer)))
     end
@@ -125,7 +125,7 @@ function render_benchmark(renderer::Renderer, trainer::Trainer, n::Int)
     for i in 1:n
         Core.println(i)
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-            trainer.model(points, directions)
+            eager_deallocation_eval(trainer.model, points, directions)
         end
     end
 end
