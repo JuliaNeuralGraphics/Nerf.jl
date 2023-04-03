@@ -1,11 +1,16 @@
 include("images.jl")
 include("intrinsics.jl")
 
-struct Dataset{D, R, T}
-    images::D
+struct Dataset{
+    I <: Images,
+    R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
+    T <: AbstractVector{SVector{3, Float32}},
+    C <: CameraIntrinsics,
+}
+    images::I
     rotations::R
     translations::T
-    intrinsics::CameraIntrinsics
+    intrinsics::C
 
     frame_filenames::Vector{String}
     rotations_host::Vector{SMatrix{3, 3, Float32, 9}}
@@ -32,7 +37,6 @@ function Dataset(
     has_metadata = (
         "w" in keys(config) && "fl_x" in keys(config) &&
         "cx" in keys(config) && "k1" in keys(config))
-    is_synthetic = !has_metadata
 
     # HACK:
     # config file for synthetic NeRF datasets does not specify file extension,

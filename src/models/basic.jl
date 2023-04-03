@@ -1,4 +1,4 @@
-struct BasicField{G, D, C}
+struct BasicField{G <: GridEncoding, D, C}
     grid_encoding::G
     density_mlp::D
     color_mlp::C
@@ -83,10 +83,10 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
     σ
 end
 
-struct BasicModel{F, P}
+struct BasicModel{F, P, O <: Adam}
     field::F
     θ::P
-    optimizer::Adam
+    optimizer::O
 end
 
 function BasicModel(field::BasicField)

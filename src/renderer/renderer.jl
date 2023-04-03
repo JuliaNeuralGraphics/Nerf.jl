@@ -12,8 +12,8 @@ include("camera_keyframe.jl")
 include("buffer.jl")
 include("utils.jl")
 
-mutable struct Renderer
-    buffer::RenderBuffer
+mutable struct Renderer{B <: RenderBuffer}
+    buffer::B
     camera::Camera
     bbox::BBox
     cone::Cone
@@ -153,7 +153,7 @@ function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
 end
 
 function trace(
-    consumer::Function, r::Renderer, rays::R,
+    consumer, r::Renderer, rays::R,
     occupancy::OccupancyGrid, train_bbox::BBox;
     max_steps::Int, min_transmittance::Float32,
     normals_consumer::Union{Nothing, Function} = nothing,

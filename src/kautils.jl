@@ -20,21 +20,19 @@ unsafe_free!(x) = return
     using AMDGPU
     using ROCKernels
     AMDGPU.allowscalar(false)
-    const DEVICE = AMDGPU.default_device()
+    const DEVICE::ROCDevice = AMDGPU.device()
 
     # HACK:
     # Disable queue pooling, as it is not needed for our case and hurts the performance
     # (~3.5x slower once we hit the hardware queue monitoring limit).
-    function ROCKernels.next_queue()
-        AMDGPU.default_queue()
-    end
+    ROCKernels.next_queue() = AMDGPU.queue()
 
     to_device(::ROCDevice, x) = ROCArray(x)
     type_from_device(::ROCDevice) = ROCArray
 
-    device_from_type(::T) where T <: ROCArray = AMDGPU.default_device()
-    device_from_type(::Type{T}) where T <: ROCArray = AMDGPU.default_device()
-    device_from_type(::Type{T}) where T <: SubArray{<:Any, <:Any, <:ROCArray, <:Any, <:Any} = AMDGPU.default_device()
+    device_from_type(::T) where T <: ROCArray = AMDGPU.device()
+    device_from_type(::Type{T}) where T <: ROCArray = AMDGPU.device()
+    device_from_type(::Type{T}) where T <: SubArray{<:Any, <:Any, <:ROCArray, <:Any, <:Any} = AMDGPU.device()
 
     Base.zeros(::ROCDevice, ::Type{T}, shape) where T = AMDGPU.zeros(T, shape)
     Base.ones(::ROCDevice, ::Type{T}, shape) where T = AMDGPU.ones(T, shape)
@@ -47,7 +45,7 @@ elseif BACKEND == "CUDA"
     using CUDA
     using CUDAKernels
     CUDA.allowscalar(false)
-    const DEVICE = CUDADevice()
+    const DEVICE::CUDADevice = CUDADevice()
 
     to_device(::CUDADevice, x) = CuArray(x)
     type_from_device(::CUDADevice) = CuArray

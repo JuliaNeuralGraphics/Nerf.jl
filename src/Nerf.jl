@@ -143,6 +143,8 @@ function benchmark()
     @time trainer_benchmark(trainer, 10)
     @time trainer_benchmark(trainer, 1000)
 
+    return nothing
+
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(camera, get_pose(dataset, 1)...)
     renderer = Renderer(DEVICE, camera, trainer.bbox, trainer.cone)

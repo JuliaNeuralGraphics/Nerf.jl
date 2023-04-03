@@ -1,7 +1,10 @@
 include("morton.jl")
 include("indexing.jl")
 
-mutable struct OccupancyGrid{D <: AbstractArray{Float32, 4}, B <: AbstractVector{UInt8}}
+mutable struct OccupancyGrid{
+    D <: AbstractArray{Float32, 4},
+    B <: AbstractVector{UInt8},
+}
     density::D
     binary::B
     mean_density::Float32

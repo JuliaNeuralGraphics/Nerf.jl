@@ -1,7 +1,7 @@
-mutable struct Trainer{M}
+mutable struct Trainer{M, D <: Dataset, O <: OccupancyGrid}
     model::M
-    dataset::Dataset
-    occupancy::OccupancyGrid
+    dataset::D
+    occupancy::O
     bbox::BBox
     cone::Cone
 
@@ -14,12 +14,12 @@ mutable struct Trainer{M}
 end
 
 function Trainer(
-    model, dataset::Dataset;
+    model, dataset::D;
     n_rays::Int = 1024, ray_steps::Int = 1024, n_levels::Int = 5,
     occupancy_update_frequency::Int = 16,
     occupancy_resolution::Int = 128,
     occupancy_decay::Float32 = 0.95f0,
-)
+) where D <: Dataset
     dev = get_device(model)
     occupancy = OccupancyGrid(dev; n_levels, resolution=occupancy_resolution)
     cone = Cone(;
