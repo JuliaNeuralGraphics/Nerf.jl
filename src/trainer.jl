@@ -20,8 +20,8 @@ function Trainer(
     occupancy_resolution::Int = 128,
     occupancy_decay::Float32 = 0.95f0,
 ) where D <: Dataset
-    dev = get_device(model)
-    occupancy = OccupancyGrid(dev; n_levels, resolution=occupancy_resolution)
+    Backend = get_backend(model)
+    occupancy = OccupancyGrid(Backend; n_levels, resolution=occupancy_resolution)
     cone = Cone(;
         angle=get_cone_angle(dataset), steps=ray_steps,
         resolution=get_resolution(occupancy), n_levels)
@@ -57,7 +57,7 @@ function set_dataset!(t::Trainer, dataset::Dataset)
 end
 
 function step!(t::Trainer)
-    BACKEND == "ROC" && GC.gc(false) # FIXME
+    BACKEND_NAME == "ROC" && GC.gc(false) # FIXME
     prepare!(t)
 
     bundle = RayBundle(

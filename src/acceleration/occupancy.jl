@@ -10,10 +10,10 @@ mutable struct OccupancyGrid{
     mean_density::Float32
 end
 
-function OccupancyGrid(dev; n_levels::Int, resolution::Int = 128)
+function OccupancyGrid(Backend; n_levels::Int, resolution::Int = 128)
     dim_size = ntuple(i -> resolution, Val{3}())
-    density = zeros(dev, Float32, (dim_size..., n_levels))
-    binary = zeros(dev, UInt8, length(density) ÷ 8)
+    density = KernelAbstractions.zeros(Backend, Float32, (dim_size..., n_levels))
+    binary = KernelAbstractions.zeros(Backend, UInt8, length(density) ÷ 8)
     OccupancyGrid(density, binary, 0f0)
 end
 
@@ -30,7 +30,7 @@ end
     get_voxel_diameter(UInt32(get_resolution(oc)), level)
 end
 
-get_device(::OccupancyGrid{D, B}) where {D, B} = device_from_type(D)
+KernelAbstractions.get_backend(og::OccupancyGrid) = get_backend(og.density)
 
 @inline get_resolution(oc::OccupancyGrid) = size(oc.density, 1)
 
@@ -73,20 +73,20 @@ function update!(
 
     step ÷= update_frequency
 
-    dev = get_device(oc)
-    points = similar(dev, SVector{3, Float32}, (n_samples,))
-    indices = similar(dev, UInt32, (n_samples,))
+    Backend = get_backend(oc)
+    points = allocate(Backend, SVector{3, Float32}, (n_samples,))
+    indices = allocate(Backend, UInt32, (n_samples,))
 
-    gp_kernel = generate_points!(dev)
-    wait(gp_kernel(
+    gp_kernel = generate_points!(Backend)
+    gp_kernel(
         points, indices, rng_state, density, bbox,
-        -0.01f0, UInt32(step); ndrange=n_uniform))
+        -0.01f0, UInt32(step); ndrange=n_uniform)
     rng_state = advance(rng_state)
     if n_non_uniform > 0
         offset = (n_uniform + 1):n_samples
-        wait(gp_kernel(
+        gp_kernel(
             @view(points[offset]), @view(indices[offset]), rng_state,
-            density, bbox, threshold, UInt32(step); ndrange=n_non_uniform))
+            density, bbox, threshold, UInt32(step); ndrange=n_non_uniform)
     end
     rng_state = advance(rng_state)
 
@@ -94,15 +94,15 @@ function update!(
     log_densities = density_eval_fn(raw_points)
     unsafe_free!(points)
 
-    tmp_density = zeros(dev, Float32, size(oc.density))
-    wait(distribute_density!(dev)(
+    tmp_density = KernelAbstractions.zeros(Backend, Float32, size(oc.density))
+    distribute_density!(Backend)(
         reinterpret(UInt32, tmp_density), log_densities,
-        indices, cone.min_stepsize; ndrange=length(indices)))
+        indices, cone.min_stepsize; ndrange=length(indices))
     unsafe_free!(indices)
     unsafe_free!(log_densities)
 
-    wait(ema_update!(dev)(
-        oc.density, tmp_density, decay; ndrange=length(oc.density)))
+    ema_update!(Backend)(
+        oc.density, tmp_density, decay; ndrange=length(oc.density))
     unsafe_free!(tmp_density)
 
     update_binary!(oc; threshold)
@@ -110,24 +110,24 @@ function update!(
 end
 
 function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
-    dev = get_device(oc)
+    Backend = get_backend(oc)
 
     oc.mean_density = mean(x -> max(0f0, x), @view(oc.density[:, :, :, 1]))
     threshold = min(threshold, oc.mean_density)
-    wait(distribute_to_binary!(dev)(
-        oc.binary, oc.density, threshold; ndrange=length(oc.binary)))
+    distribute_to_binary!(Backend)(
+        oc.binary, oc.density, threshold; ndrange=length(oc.binary))
 
     binary_level_length = offset_binary(oc, 1)
     binary_resolution = UInt32(size(oc.density, 1) ÷ 8)
     ndrange = binary_level_length ÷ 8
     n_levels = size(oc.density, 4)
 
-    bmp_kernel = binary_max_pool!(dev)
+    bmp_kernel = binary_max_pool!(Backend)
     for l in 1:(n_levels - 1)
         s, m, e = binary_level_length .* ((l - 1), l, (l + 1))
         prev_level = @view(oc.binary[(s + 1):m])
         curr_level = @view(oc.binary[(m + 1):e])
-        wait(bmp_kernel(curr_level, prev_level, binary_resolution; ndrange))
+        bmp_kernel(curr_level, prev_level, binary_resolution; ndrange)
     end
 end
 
@@ -223,11 +223,11 @@ end
 function mark_invisible_regions!(
     oc::OccupancyGrid; intrinsics, rotations, translations,
 )
-    dev = get_device(oc)
+    Backend = get_backend(oc)
     res_scale = 0.5f0 .* intrinsics.resolution ./ intrinsics.focal
-    wait(_mark_invisible_regions!(dev)(
+    _mark_invisible_regions!(Backend)(
         oc.density, rotations, translations, res_scale;
-        ndrange=length(oc.density)))
+        ndrange=length(oc.density))
 end
 
 @kernel function _mark_invisible_regions!(

@@ -4,8 +4,8 @@ struct BasicField{G <: GridEncoding, D, C}
     color_mlp::C
 end
 
-function BasicField(dev; backbone_size::Int = 16, grid_kwargs...)
-    ge = GridEncoding(dev; grid_kwargs...)
+function BasicField(Backend; backbone_size::Int = 16, grid_kwargs...)
+    ge = GridEncoding(Backend; grid_kwargs...)
     density_mlp_input = prod(get_output_shape(ge))
     color_mlp_input = 16 + backbone_size # 16 for spherical harmonics
     density_mlp = Chain(
@@ -18,13 +18,13 @@ function BasicField(dev; backbone_size::Int = 16, grid_kwargs...)
     BasicField(ge, density_mlp, color_mlp)
 end
 
-get_device(b::BasicField) = get_device(b.grid_encoding)
+KernelAbstractions.get_backend(b::BasicField) = get_backend(b.grid_encoding)
 
 function init(b::BasicField)
-    dev = get_device(b)
+    Backend = get_backend(b)
     θge = init(b.grid_encoding)
-    θdensity = map(l -> to_device(dev, l), init(b.density_mlp))
-    θcolor = map(l -> to_device(dev, l), init(b.color_mlp))
+    θdensity = map(l -> adapt(Backend, l), init(b.density_mlp))
+    θcolor = map(l -> adapt(Backend, l), init(b.color_mlp))
     (; θge, θdensity, θcolor)
 end
 
@@ -71,7 +71,7 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
     n = size(points, 2)
     n_iterations = ceil(Int, n / batch)
 
-    σ = similar(get_device(b), Float32, n)
+    σ = allocate(get_backend(b), Float32, (n,))
     for i in 1:n_iterations
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
@@ -91,11 +91,12 @@ end
 
 function BasicModel(field::BasicField)
     θ = init(field)
-    BasicModel(field, θ, Adam(get_device(field), θ; lr=1f-2))
+    BasicModel(field, θ, Adam(get_backend(field), θ; lr=1f-2))
 end
 
-get_device(m::BasicModel) = get_device(m.field)
+KernelAbstractions.get_backend(m::BasicModel) = get_backend(m.field)
 
+# TODO simplify types
 function batched_density(m::BasicModel, points::P; batch::Int) where P <: AbstractMatrix
     batched_density(m.field, points, m.θ; batch)
 end
@@ -115,7 +116,7 @@ function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     Y, back = Zygote.pullback(points) do p
         density(m.field, p, m.θ, Val{:IG}())
     end
-    Δ = ones(get_device(m), Float32, size(Y))
+    Δ = ones(get_backend(m), Float32, size(Y))
     ∇ = back(Δ)[1]
     n⃗ = safe_normalize(-∇; dims=1) # TODO in-place normalization kernel with negation
     unsafe_free!(Δ)

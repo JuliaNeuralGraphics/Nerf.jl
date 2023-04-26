@@ -4,15 +4,15 @@ mutable struct RenderBuffer{B <: AbstractMatrix{SVector{4, Float32}}}
     spp::UInt32
 end
 
-function RenderBuffer(dev; width::Int, height::Int)
-    buffer = similar(dev, SVector{4, Float32}, (width, height))
-    accumulator = similar(dev, SVector{4, Float32}, (width, height))
+function RenderBuffer(Backend; width::Int, height::Int)
+    buffer = allocate(Backend, SVector{4, Float32}, (width, height))
+    accumulator = allocate(Backend, SVector{4, Float32}, (width, height))
     fill!(reinterpret(Float32, buffer), 0f0)
     fill!(reinterpret(Float32, accumulator), 0f0)
     RenderBuffer(buffer, accumulator, UInt32(0))
 end
 
-get_device(::RenderBuffer{B}) where B = device_from_type(B)
+KernelAbstractions.get_backend(b::RenderBuffer) = get_backend(b.buffer)
 
 reset_spp!(b::RenderBuffer) = b.spp = 0
 
@@ -27,8 +27,8 @@ function reset!(b::RenderBuffer)
 end
 
 function accumulate!(b::RenderBuffer; offset::UInt32, tile_size::Int)
-    wait(accumulate_kernel!(get_device(b))(
-        b.accumulator, b.buffer, offset, Float32(b.spp); ndrange=tile_size))
+    accumulate_kernel!(get_backend(b))(
+        b.accumulator, b.buffer, offset, Float32(b.spp); ndrange=tile_size)
     return nothing
 end
 

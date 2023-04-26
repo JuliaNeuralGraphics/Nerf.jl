@@ -8,7 +8,7 @@ using ImageCore
 using ImageTransformations
 using JSON
 using KernelAbstractions
-using KernelAbstractions: @atomic
+using KernelAbstractions: @atomic, unsafe_free!
 using LinearAlgebra
 using Preferences
 using Quaternions
@@ -16,6 +16,8 @@ using Rotations
 using StaticArrays
 using Statistics
 using Zygote
+
+# TODO rand on device
 
 include("kautils.jl")
 
@@ -82,19 +84,18 @@ include("models/basic.jl")
 include("marching_cubes/marching_cubes.jl")
 include("marching_tetrahedra/marching_tetrahedra.jl")
 
-@info "[Nerf.jl] Backend: $BACKEND"
-@info "[Nerf.jl] Device: $DEVICE"
+@info "[Nerf.jl] Backend: $BACKEND_NAME"
+@info "[Nerf.jl] Device: $Backend"
 
 function main()
-    dev = DEVICE
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
-    dataset = Dataset(dev; config_file)
+    dataset = Dataset(Backend; config_file)
 
-    model = BasicModel(BasicField(dev))
+    model = BasicModel(BasicField(Backend))
     trainer = Trainer(model, dataset)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
+    renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
     for i in 1:20_000
         loss = step!(trainer)

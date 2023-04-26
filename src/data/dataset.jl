@@ -22,7 +22,7 @@ struct Dataset{
 end
 
 function Dataset(
-    dev; config_file::String,
+    backend; config_file::String,
     scale::Float32 = 0.33f0,
     offset = SVector{3, Float32}(0.5f0, 0.5f0, 0.5f0),
 )
@@ -86,15 +86,9 @@ function Dataset(
         intrinsics = CameraIntrinsics(width(images), height(images), fov)
     end
 
-    if dev isa CPU
-        device_rotations = rotations
-        device_translations = translations
-        device_images = images
-    else
-        device_rotations = to_device(dev, rotations)
-        device_translations = to_device(dev, translations)
-        device_images = adapt(type_from_device(dev), images)
-    end
+    device_rotations = adapt(backend, rotations)
+    device_translations = adapt(backend, translations)
+    device_images = adapt(backend, images)
     Dataset(
         device_images, device_rotations, device_translations, intrinsics,
         frame_filenames, rotations, translations, scale, offset, bbox_scale)

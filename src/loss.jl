@@ -2,14 +2,14 @@ function photometric_loss(
     rgba::R; bundle::RayBundle, samples::RaySamples, images::Images,
     n_rays::Int, rng_state::UInt64,
 ) where R <: AbstractMatrix{Float32}
-    dev = device_from_type(R)
-    loss = similar(dev, Float32, length(bundle))
-    ∇rgba = zeros(dev, Float32, size(rgba))
-    wait(photometric_loss!(dev)(
+    Backend = get_backend(rgba)
+    loss = allocate(Backend, Float32, length(bundle))
+    ∇rgba = KernelAbstractions.zeros(Backend, Float32, size(rgba))
+    photometric_loss!(Backend)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.thread_indices, rng_state, bundle.image_indices,
         bundle.span, samples.deltas, images, UInt32(n_rays);
-        ndrange=length(bundle)))
+        ndrange=length(bundle))
     sum(loss), ∇rgba
 end
 

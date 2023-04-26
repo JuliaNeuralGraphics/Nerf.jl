@@ -24,7 +24,7 @@ mutable struct RenderRayBundle{R, B, I, C}
     alive_idx::UInt32
 end
 
-function unsafe_free!(b::RenderRayBundle)
+function KernelAbstractions.unsafe_free!(b::RenderRayBundle)
     unsafe_free!(b.rays[1])
     unsafe_free!(b.rays[2])
     unsafe_free!(b.rgba[1])
@@ -36,7 +36,7 @@ function unsafe_free!(b::RenderRayBundle)
     nothing
 end
 
-get_device(::RenderRayBundle{R, B, I, C}) where {R, B, I, C} = device_from_type(R)
+KernelAbstractions.get_backend(rb::RenderRayBundle) = get_backend(rb.rays[1])
 
 function switch_buffers!(b::RenderRayBundle)
     b.alive_idx = (b.alive_idx == 1) ? 2 : 1
@@ -52,23 +52,23 @@ function buffer(b::RenderRayBundle)
 end
 
 function RenderRayBundle(rays::R) where R
-    dev = device_from_type(R)
+    Backend = get_backend(rays)
 
     rays_buffers = (
-        rays, similar(dev, RenderRay, length(rays)))
+        rays, allocate(Backend, RenderRay, length(rays)))
     rgba_buffers = (
-        similar(dev, SVector{4, Float32}, length(rays)),
-        similar(dev, SVector{4, Float32}, length(rays)))
+        allocate(Backend, SVector{4, Float32}, length(rays)),
+        allocate(Backend, SVector{4, Float32}, length(rays)))
 
-    hit_ids = similar(dev, UInt32, (length(rays),))
-    hit_rgba = similar(dev, SVector{4, Float32}, (length(rays),))
+    hit_ids = allocate(Backend, UInt32, (length(rays),))
+    hit_rgba = allocate(Backend, SVector{4, Float32}, (length(rays),))
 
     fill!(reinterpret(Float32, hit_rgba), 0f0)
     fill!(reinterpret(Float32, rgba_buffers[1]), 0f0)
     fill!(reinterpret(Float32, rgba_buffers[2]), 0f0)
 
-    hit_counter = zeros(dev, UInt32, 1)
-    alive_counter = zeros(dev, UInt32, 1)
+    hit_counter = KernelAbstractions.zeros(Backend, UInt32, 1)
+    alive_counter = KernelAbstractions.zeros(Backend, UInt32, 1)
     RenderRayBundle(
         rays_buffers, rgba_buffers, hit_ids, hit_rgba,
         hit_counter, alive_counter, UInt32(1))
@@ -77,17 +77,17 @@ end
 function compact!(
     bundle::RenderRayBundle; n_alive::Int, min_transmittance::Float32,
 )
-    dev = get_device(bundle)
+    Backend = get_backend(bundle)
     fill!(bundle.alive_counter, UInt32(0))
 
     switch_buffers!(bundle)
     (; alive_rays, alive_rgba) = alive(bundle)
     (; buffer_rays, buffer_rgba) = buffer(bundle)
 
-    wait(compact_kernel!(dev)(
+    compact_kernel!(Backend)(
         alive_rays, alive_rgba, bundle.hit_ids, bundle.hit_rgba,
         buffer_rays, buffer_rgba, bundle.hit_counter, bundle.alive_counter,
-        min_transmittance; ndrange=n_alive))
+        min_transmittance; ndrange=n_alive)
     return Int(Array(bundle.alive_counter)[1])
 end
 
@@ -95,27 +95,27 @@ function materialize(
     bundle::RenderRayBundle, occupancy::OccupancyGrid, cone::Cone;
     train_bbox::BBox, render_bbox::BBox, max_samples::Int,
 )
-    dev = get_device(bundle)
+    Backend = get_backend(bundle)
     n_alive = Int(Array(bundle.alive_counter)[1])
 
-    span = similar(dev, SVector{3, UInt32}, n_alive)
-    steps_counter = zeros(dev, UInt32, 1)
-    rays_counter = zeros(dev, UInt32, 1)
+    span = allocate(Backend, SVector{3, UInt32}, n_alive)
+    steps_counter = KernelAbstractions.zeros(Backend, UInt32, 1)
+    rays_counter = KernelAbstractions.zeros(Backend, UInt32, 1)
 
     (; alive_rays, alive_rgba) = alive(bundle)
 
     n_levels::UInt32 = get_n_levels(occupancy)
     resolution::UInt32 = get_resolution(occupancy)
-    wait(count_render_samples!(dev)(
+    count_render_samples!(Backend)(
         span, steps_counter, rays_counter,
         alive_rays, render_bbox, cone, UInt32(max_samples),
-        occupancy.binary, n_levels, resolution; ndrange=n_alive))
+        occupancy.binary, n_levels, resolution; ndrange=n_alive)
 
     n_samples = Array{Int}(steps_counter)[1]
-    samples = RaySamples(dev; n_samples)
-    wait(generate_render_samples!(dev)(
+    samples = RaySamples(Backend; n_samples)
+    generate_render_samples!(Backend)(
         samples, span, alive_rays, render_bbox, train_bbox, cone,
-        occupancy.binary, n_levels, resolution; ndrange=n_alive))
+        occupancy.binary, n_levels, resolution; ndrange=n_alive)
     samples, span
 end
 

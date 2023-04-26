@@ -31,21 +31,21 @@ end
 function init_rays_from_vertices_and_normals!(
     renderer::Renderer, occupancy::OccupancyGrid, vertices, normals,
 )
-    dev = get_device(renderer)
+    Backend = get_backend(renderer)
     n_pixels = length(vertices)
     offset::UInt32 = renderer.tile_idx * renderer.tile_size
     n_rays = min(renderer.tile_size, min(n_pixels, n_pixels - offset))
-    rays = similar(dev, RenderRay, (n_rays,))
+    rays = allocate(Backend, RenderRay, (n_rays,))
 
-    wait(init_rays_from_vertices_and_normals_kernel!(dev)(
+    init_rays_from_vertices_and_normals_kernel!(Backend)(
         rays, offset, renderer.bbox, vertices, normals;
-        ndrange=n_rays))
+        ndrange=n_rays)
 
     n_levels::UInt32 = get_n_levels(occupancy)
     resolution::UInt32 = get_resolution(occupancy)
-    wait(init_advance!(dev)(
+    init_advance!(Backend)(
         rays, renderer.cone, renderer.bbox,
-        occupancy.binary, n_levels, resolution, UInt32(0); ndrange=n_rays))
+        occupancy.binary, n_levels, resolution, UInt32(0); ndrange=n_rays)
     rays
 end
 

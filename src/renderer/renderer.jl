@@ -25,21 +25,20 @@ mutable struct Renderer{B <: RenderBuffer}
     mode::RenderMode
 end
 
-get_device(r::Renderer) = get_device(r.buffer)
+KernelAbstractions.get_backend(r::Renderer) = get_backend(r.buffer)
 
 function Renderer(
-    dev, camera::Camera, bbox::BBox, cone::Cone; tile_size::Int = 256 * 256,
+    Backend, camera::Camera, bbox::BBox, cone::Cone; tile_size::Int = 256 * 256,
 )
     width, height = get_resolution(camera)
-    buffer = RenderBuffer(dev; width, height)
+    buffer = RenderBuffer(Backend; width, height)
     n_tiles = ceil(Int, (width * height) / tile_size)
     Renderer(buffer, camera, bbox, cone, 0, tile_size, n_tiles, Color)
 end
 
 function resize!(r::Renderer; width::Int, height::Int)
-    dev = get_device(r)
     set_resolution!(r.camera; width, height)
-    r.buffer = RenderBuffer(dev; width, height)
+    r.buffer = RenderBuffer(get_backend(r); width, height)
     r.n_tiles = ceil(Int, (width * height) / r.tile_size)
     r.tile_idx = 0
     return nothing
@@ -86,7 +85,7 @@ function render!(
     V <: AbstractVector{SVector{3, Float32}},
     N <: AbstractVector{SVector{3, Float32}},
 }
-    BACKEND == "ROC" && GC.gc(false) # FIXME
+    BACKEND_NAME == "ROC" && GC.gc(false) # FIXME
     reset!(r)
     for i in 1:spp
         r.tile_idx = 0
@@ -125,9 +124,9 @@ function render_tile!(
         max_steps, min_transmittance, normals_consumer)
     if n_hit > 0
         (; offset, tile_size) = current_tile(r)
-        wait(shade!(get_device(r.buffer))(
+        shade!(get_backend(r.buffer))(
             r.buffer.buffer, bundle.hit_ids, bundle.hit_rgba,
-            offset, r.mode; ndrange=n_hit))
+            offset, r.mode; ndrange=n_hit)
         accumulate!(r.buffer; offset, tile_size)
     end
     unsafe_free!(bundle)
@@ -135,20 +134,20 @@ function render_tile!(
 end
 
 function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
-    dev = get_device(r)
+    Backend = get_backend(r)
     rotation, translation = split_pose(r.camera)
     (; offset, tile_size) = current_tile(r)
 
-    rays = similar(dev, RenderRay, (tile_size,))
-    wait(init_rays!(dev)(
+    rays = allocate(Backend, RenderRay, (tile_size,))
+    init_rays!(Backend)(
         rays, offset, r.bbox, rotation, translation, r.camera.intrinsics,
-        near, r.buffer.spp; ndrange=tile_size))
+        near, r.buffer.spp; ndrange=tile_size)
 
     n_levels::UInt32 = get_n_levels(occupancy)
     resolution::UInt32 = get_resolution(occupancy)
-    wait(init_advance!(dev)(
+    init_advance!(Backend)(
         rays, r.cone, r.bbox, occupancy.binary, n_levels, resolution,
-        r.buffer.spp; ndrange=tile_size))
+        r.buffer.spp; ndrange=tile_size)
     rays
 end
 
@@ -158,7 +157,7 @@ function trace(
     max_steps::Int, min_transmittance::Float32,
     normals_consumer::Union{Nothing, Function} = nothing,
 ) where R <: AbstractVector{RenderRay}
-    dev = get_device(r)
+    Backend = get_backend(r)
     bundle = RenderRayBundle(rays)
     camera_origin, camera_forward = view_pos(r.camera), view_dir(r.camera)
     # Min/max number of steps along the ray before recompaction:
@@ -167,7 +166,7 @@ function trace(
     n_alive = n_rays = length(rays)
 
     for step in 1:max_steps
-        BACKEND == "ROC" && GC.gc(false) # FIXME
+        BACKEND_NAME == "ROC" && GC.gc(false) # FIXME
 
         n_alive = compact!(bundle; n_alive, min_transmittance)
         n_alive == 0 && break
@@ -193,11 +192,11 @@ function trace(
         end
 
         (; alive_rays, alive_rgba) = alive(bundle)
-        wait(compose!(dev)(
+        compose!(Backend)(
             alive_rgba, span, evaluated_rgba, ∇n,
             alive_rays, samples, r.mode,
             camera_origin, camera_forward,
-            r.bbox, min_transmittance, UInt32(n_steps); ndrange=n_alive))
+            r.bbox, min_transmittance, UInt32(n_steps); ndrange=n_alive)
 
         unsafe_free!(evaluated_rgba)
         unsafe_free!(samples)

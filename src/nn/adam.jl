@@ -1,5 +1,4 @@
-Base.@kwdef mutable struct Adam{D, T}
-    dev::D
+Base.@kwdef mutable struct Adam{T}
     μ::Vector{T}
     ν::Vector{T}
     current_step::UInt32 = UInt32(0)
@@ -11,20 +10,21 @@ Base.@kwdef mutable struct Adam{D, T}
     ϵ::Float32 = 1f-8
 end
 
-function Adam(dev, θ; kwargs...)
-    D = type_from_device(dev)
-    μ, ν = D{Float32, 1}[], D{Float32, 1}[]
-    _add_moments!(μ, ν, θ, dev)
-    Adam(; dev, μ, ν, kwargs...)
+KernelAbstractions.get_backend(opt::Adam) = get_backend(first(opt.μ))
+
+function Adam(Backend, θ; kwargs...)
+    μ, ν = [], [] # TODO unstable
+    _add_moments!(μ, ν, θ, Backend)
+    Adam(; μ, ν, kwargs...)
 end
 
-function _add_moments!(μ, ν, θ::T, dev) where T <: Union{Tuple, NamedTuple}
-    foreach(θᵢ -> _add_moments!(μ, ν, θᵢ, dev), θ)
+function _add_moments!(μ, ν, θ::T, Backend) where T <: Union{Tuple, NamedTuple}
+    foreach(θᵢ -> _add_moments!(μ, ν, θᵢ, Backend), θ)
 end
 
-function _add_moments!(μ, ν, θ, dev)
-    push!(μ, zeros(dev, Float32, length(θ)))
-    push!(ν, zeros(dev, Float32, length(θ)))
+function _add_moments!(μ, ν, θ, Backend)
+    push!(μ, KernelAbstractions.zeros(Backend, Float32, length(θ)))
+    push!(ν, KernelAbstractions.zeros(Backend, Float32, length(θ)))
 end
 
 function reset!(opt::Adam)
@@ -67,9 +67,9 @@ function _step!(opt::Adam, θ::T, ∇::T, i; dispose::Bool) where T <: AbstractA
     size(θ) == size(∇) || error(
         "Shape of parameters and gradients must be the same, " *
         "but is instead `$(size(θ))` vs `$(size(∇))`.")
-    wait(adam_step_kernel!(opt.dev)(
+    adam_step_kernel!(get_backend(opt))(
         opt.μ[i], opt.ν[i], θ, ∇, Float32(opt.current_step),
-        opt.lr, opt.β1, opt.β2, opt.ϵ; ndrange=length(θ)))
+        opt.lr, opt.β1, opt.β2, opt.ϵ; ndrange=length(θ))
 
     dispose && unsafe_free!(∇)
 

@@ -12,7 +12,7 @@ struct GridEncoding{O}
 end
 
 function GridEncoding(
-    dev; n_levels::Int = 16, scale::Float32 = 1.5f0,
+    Backend; n_levels::Int = 16, scale::Float32 = 1.5f0,
     base_resolution::Int = 16, n_features::Int = 2, hashmap_size::Int = 19,
 )
     @assert n_levels < 34 "Too many levels for the offset table."
@@ -40,11 +40,11 @@ function GridEncoding(
     offset_table[end] = offset
     n_params = offset * n_features
     GridEncoding(
-        to_device(dev, offset_table), UInt32(n_dims), UInt32(n_features),
+        adapt(Backend, offset_table), UInt32(n_dims), UInt32(n_features),
         UInt32(n_levels), UInt32(n_params), UInt32(base_resolution), scale)
 end
 
-get_device(::GridEncoding{O}) where O = device_from_type(O)
+KernelAbstractions.get_backend(ge::GridEncoding) = get_backend(ge.offset_table)
 
 function _get_kernel_params(ge)
     NPD = Val{Int64(ge.n_dims)}()
@@ -54,7 +54,7 @@ end
 
 function init(ge::GridEncoding)
     shape = Int64.((ge.n_features, ge.n_params ÷ ge.n_features))
-    rand(get_device(ge), Float32, shape) .* 2f-4 .- 1f-4
+    adapt(get_backend(ge), rand(Float32, shape) .* 2f-4 .- 1f-4)
 end
 
 function reset!(::GridEncoding, θ)
@@ -66,48 +66,48 @@ function get_output_shape(ge::GridEncoding)
 end
 
 function (ge::GridEncoding)(x, θ)
-    dev = get_device(ge)
+    Backend = get_backend(ge)
     n = size(x, 2)
-    y = similar(dev, Float32, (get_output_shape(ge)..., n))
+    y = allocate(Backend, Float32, (get_output_shape(ge)..., n))
     NPD, NFPL = _get_kernel_params(ge)
-    wait(grid_kernel!(dev)(
+    grid_kernel!(Backend)(
         y, nothing, x, θ, ge.offset_table, NPD, NFPL,
-        ge.base_resolution, log2(ge.scale); ndrange=(n, ge.n_levels)))
+        ge.base_resolution, log2(ge.scale); ndrange=(n, ge.n_levels))
     reshape(y, :, n)
 end
 
 function (ge::GridEncoding)(x, θ, ::Val{:IG})
-    dev = get_device(ge)
+    Backend = get_backend(ge)
     n = size(x, 2)
-    y = similar(dev, Float32, (get_output_shape(ge)..., n))
+    y = allocate(Backend, Float32, (get_output_shape(ge)..., n))
     ∂y∂x_shape = Int64.((ge.n_dims, get_output_shape(ge)..., n))
-    ∂y∂x = zeros(dev, Float32, ∂y∂x_shape)
+    ∂y∂x = KernelAbstractions.zeros(Backend, Float32, ∂y∂x_shape)
 
     NPD, NFPL = _get_kernel_params(ge)
-    wait(grid_kernel!(dev)(
+    grid_kernel!(Backend)(
         y, ∂y∂x, x, θ, ge.offset_table, NPD, NFPL, ge.base_resolution,
-        log2(ge.scale); ndrange=(n, ge.n_levels)))
+        log2(ge.scale); ndrange=(n, ge.n_levels))
     reshape(y, :, n), ∂y∂x
 end
 
 function ∇(ge::GridEncoding, ∂f∂y, x, θ)
-    dev = get_device(ge)
+    Backend = get_backend(ge)
     n = size(x, 2)
     NPD, NFPL = _get_kernel_params(ge)
-    ∂grid = zeros(dev, Float32, size(θ))
-    wait(∇grid_kernel!(dev)(
+    ∂grid = KernelAbstractions.zeros(Backend, Float32, size(θ))
+    ∇grid_kernel!(Backend)(
         ∂grid, ∂f∂y, x, ge.offset_table, NPD, NFPL, ge.base_resolution,
-        log2(ge.scale); ndrange=(n, ge.n_levels)))
+        log2(ge.scale); ndrange=(n, ge.n_levels))
     ∂grid
 end
 
 function ∇grid_input(ge::GridEncoding, ∂L∂y, ∂y∂x)
-    dev = get_device(ge)
+    Backend = get_backend(ge)
     n = size(∂y∂x, 4)
     NPD, NFPL = _get_kernel_params(ge)
     L = Val{ge.n_levels}()
-    ∂L∂x = similar(dev, Float32, Int64.((ge.n_dims, n)))
-    wait(∇grid_kernel_input!(dev)(∂L∂x, ∂L∂y, ∂y∂x, NPD, NFPL, L; ndrange=n))
+    ∂L∂x = allocate(Backend, Float32, Int64.((ge.n_dims, n)))
+    ∇grid_kernel_input!(Backend)(∂L∂x, ∂L∂y, ∂y∂x, NPD, NFPL, L; ndrange=n)
     ∂L∂x
 end
 

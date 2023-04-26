@@ -42,14 +42,13 @@ function subdivide_tetrahedra(vertices::V, field::F; indices) where {V, F}
         end
     end
 
-    dev = device_from_type(V)
-
+    Backend = get_backend(vertices)
     all_edges = reshape(indices[TET_BASE_EDGES, :], 2, :)
-    wait(_sort_edges!(dev)(all_edges; ndrange=size(all_edges, 2)))
+    _sort_edges!(Backend)(all_edges; ndrange=size(all_edges, 2))
 
     # Select only unique edges.
     all_edges_raw = reshape(reinterpret(UInt64, all_edges), :)
-    unique_edges_raw, idx_map = _unique(all_edges_raw; dev)
+    unique_edges_raw, idx_map = _unique(all_edges_raw; Backend)
     unique_edges = reshape(reinterpret(UInt32, unique_edges_raw), 2, :)
 
     idx_map .+= size(vertices, 2)

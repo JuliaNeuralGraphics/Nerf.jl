@@ -11,10 +11,10 @@
 
         # TODO make inferrable at > 3 length
         @inferred Nerf.init(c)
-        θ = map(l -> Nerf.to_device(DEVICE, l), Nerf.init(c))
+        θ = map(l -> adapt(Backend, l), Nerf.init(c))
 
         n = 16
-        x = rand(DEVICE, T, (3, n))
+        x = adapt(Backend, rand(T, (3, n)))
         @inferred c(x, θ)
         y = c(x, θ)
         @test eltype(y) == T
@@ -32,7 +32,7 @@ end
     host_directions = zeros(Float32, 3, n)
     host_directions[:, 1] .= (1, 0, 0)
     host_directions[:, 2] .= (1, 1, 1)
-    directions = Nerf.to_device(DEVICE, host_directions)
+    directions = adapt(Backend, host_directions)
 
     norms = Nerf.safe_norm(directions; dims=1)
     @test size(norms) == (1, n)
@@ -48,10 +48,10 @@ end
 
 @testset "Test reflection function keeps directions norm" begin
     n = 5
-    directions = rand(DEVICE, Float32, (3, n))
+    directions = adapt(Backend, rand(Float32, (3, n)))
     directions = Nerf.safe_normalize(directions; dims=1)
 
-    normals = rand(DEVICE, Float32, (3, n))
+    normals = adapt(Backend, rand(Float32, (3, n)))
     normals = Nerf.safe_normalize(normals; dims=1)
 
     reflections = Nerf.reflect(directions, normals)
