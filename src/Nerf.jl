@@ -106,14 +106,14 @@ function main()
         loss = step!(trainer)
         @show i, loss
 
-        # i % 1000 == 0 || continue
+        i % 1000 == 0 || continue
 
-        # pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
-        # set_projection!(camera, get_pose(dataset, pose_idx)...)
-        # render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-        #     model(points, directions)
-        # end
-        # save("image-$i.png", RGB.(to_image(renderer.buffer)))
+        pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
+        set_projection!(camera, get_pose(dataset, pose_idx)...)
+        render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
+            model(points, directions)
+        end
+        save("image-$i.png", RGB.(to_image(renderer.buffer)))
     end
     nothing
 end

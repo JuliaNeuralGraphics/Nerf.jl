@@ -74,7 +74,7 @@ function step!(t::Trainer)
         bundle, samples, images=t.dataset.images,
         n_rays=t.n_rays, rng_state=t.rng_state)
 
-    sync_free!(get_backend(t), bundle, samples)
+    sync_free!(get_backend(t.model), bundle, samples)
 
     t.rng_state = advance(t.rng_state)
     t.step += 1
