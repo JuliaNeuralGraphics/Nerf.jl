@@ -71,14 +71,15 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
     n = size(points, 2)
     n_iterations = ceil(Int, n / batch)
 
-    σ = allocate(get_backend(b), Float32, (n,))
+    Backend = get_backend(b)
+    σ = allocate(Backend, Float32, (n,))
     for i in 1:n_iterations
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
 
         batch_σ = density(b, @view(points[:, i_start:i_end]), θ)
         σ[i_start:i_end] .= batch_σ
-        unsafe_free!(batch_σ)
+        sync_free!(Backend, batch_σ)
     end
     σ
 end
@@ -119,8 +120,7 @@ function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     Δ = ones(get_backend(m), Float32, size(Y))
     ∇ = back(Δ)[1]
     n⃗ = safe_normalize(-∇; dims=1) # TODO in-place normalization kernel with negation
-    unsafe_free!(Δ)
-    unsafe_free!(∇)
+    sync_free!(get_backend(m), Δ, ∇)
     n⃗
 end
 

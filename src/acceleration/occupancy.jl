@@ -92,18 +92,17 @@ function update!(
 
     raw_points = reshape(reinterpret(Float32, points), 3, :)
     log_densities = density_eval_fn(raw_points)
-    unsafe_free!(points)
+    sync_free!(Backend, points)
 
     tmp_density = KernelAbstractions.zeros(Backend, Float32, size(oc.density))
     distribute_density!(Backend)(
         reinterpret(UInt32, tmp_density), log_densities,
         indices, cone.min_stepsize; ndrange=length(indices))
-    unsafe_free!(indices)
-    unsafe_free!(log_densities)
+    sync_free!(Backend, indices, log_densities)
 
     ema_update!(Backend)(
         oc.density, tmp_density, decay; ndrange=length(oc.density))
-    unsafe_free!(tmp_density)
+    sync_free!(Backend, tmp_density)
 
     update_binary!(oc; threshold)
     return rng_state

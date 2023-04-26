@@ -71,7 +71,7 @@ function _step!(opt::Adam, θ::T, ∇::T, i; dispose::Bool) where T <: AbstractA
         opt.μ[i], opt.ν[i], θ, ∇, Float32(opt.current_step),
         opt.lr, opt.β1, opt.β2, opt.ϵ; ndrange=length(θ))
 
-    dispose && unsafe_free!(∇)
+    dispose && sync_free!(get_backend(opt), ∇)
 
     i + 1
 end
