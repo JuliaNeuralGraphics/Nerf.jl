@@ -138,8 +138,8 @@ end
 
 function benchmark()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
-    dataset = Dataset(DEVICE; config_file)
-    model = BasicModel(BasicField(DEVICE))
+    dataset = Dataset(Backend; config_file)
+    model = BasicModel(BasicField(Backend))
     trainer = Trainer(model, dataset)
 
     # GC.enable_logging(true)
@@ -153,7 +153,7 @@ function benchmark()
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(camera, get_pose(dataset, 1)...)
-    renderer = Renderer(DEVICE, camera, trainer.bbox, trainer.cone)
+    renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
     Core.println("Renderer benchmark")
 
