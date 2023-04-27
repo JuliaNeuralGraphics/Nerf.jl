@@ -114,13 +114,14 @@ function (m::BasicModel)(points::P, directions::D) where {
 end
 
 function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
+    Backend = get_backend(m)
     Y, back = Zygote.pullback(points) do p
         density(m.field, p, m.θ, Val{:IG}())
     end
-    Δ = ones(get_backend(m), Float32, size(Y))
+    Δ = KernelAbstractions.ones(Backend, Float32, size(Y))
     ∇ = back(Δ)[1]
     n⃗ = safe_normalize(-∇; dims=1) # TODO in-place normalization kernel with negation
-    sync_free!(get_backend(m), Δ, ∇)
+    sync_free!(Backend, Δ, ∇)
     n⃗
 end
 
