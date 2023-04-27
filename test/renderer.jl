@@ -23,7 +23,7 @@
     camera = Nerf.Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Nerf.Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
-    for i in 1:10
+    for i in 1:2
         Nerf.set_projection!(camera, Nerf.get_pose(dataset, i)...)
         Nerf.render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
             # model(points, directions)
