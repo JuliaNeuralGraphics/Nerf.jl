@@ -85,8 +85,8 @@ include("marching_cubes/marching_cubes.jl")
 include("marching_tetrahedra/marching_tetrahedra.jl")
 
 function sync_free!(Backend, args...)
-    KernelAbstractions.synchronize(Backend)
     unsafe_free!.(args)
+    KernelAbstractions.synchronize(Backend) # synchronize after free, to be able to HSA allocate.
 end
 
 @info "[Nerf.jl] Backend: $BACKEND_NAME"
@@ -97,7 +97,7 @@ function main()
     dataset = Dataset(Backend; config_file)
 
     model = BasicModel(BasicField(Backend))
-    trainer = Trainer(model, dataset)
+    trainer = Trainer(model, dataset; n_rays=512)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
@@ -140,7 +140,7 @@ function benchmark()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
     model = BasicModel(BasicField(Backend))
-    trainer = Trainer(model, dataset)
+    trainer = Trainer(model, dataset; n_rays=512)
 
     # GC.enable_logging(true)
 
