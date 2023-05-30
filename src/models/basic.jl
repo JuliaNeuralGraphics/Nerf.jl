@@ -67,6 +67,19 @@ function density(b::BasicField, points::P, θ, mode = Val{:NOIG}()) where P <: A
     b.density_mlp(encoded_points, θ.θdensity)[1, :]
 end
 
+function _dealloc_density(b::BasicField, points::P, θ) where P <: AbstractMatrix{Float32}
+    Backend = get_backend(b)
+
+    encoded_points = b.grid_encoding(points, θ.θge)
+    tmp = b.density_mlp.layers[1](encoded_points, θ.θdensity[1])
+    sync_free!(Backend, encoded_points)
+    dst = b.density_mlp.layers[2](tmp, θ.θdensity[2])
+    sync_free!(Backend, tmp)
+    y = dst[1, :]
+    sync_free!(Backend, dst)
+    return y
+end
+
 function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: AbstractMatrix{Float32}
     n = size(points, 2)
     n_iterations = ceil(Int, n / batch)
@@ -77,12 +90,14 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
 
-        batch_σ = density(b, @view(points[:, i_start:i_end]), θ)
+        batch_σ = _dealloc_density(b, @view(points[:, i_start:i_end]), θ)
         σ[i_start:i_end] .= batch_σ
         sync_free!(Backend, batch_σ)
     end
     σ
 end
+
+# TODO eager dealloc density function
 
 struct BasicModel{F, P, O <: Adam}
     field::F
@@ -132,10 +147,15 @@ function step!(
 ) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
-    loss, ∇ = Zygote.withgradient(m.θ) do θ
-        rgba = m.field(points, directions, θ)
-        photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
+    loss::Float32 = 0f0
+    AMDGPU.Mem.definitely_free() do
+        loss, ∇ = Zygote.withgradient(m.θ) do θ
+            rgba = m.field(points, directions, θ)
+            photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
+        end
+        step!(m.optimizer, m.θ, ∇[1]; dispose=true)
     end
-    step!(m.optimizer, m.θ, ∇[1]; dispose=true)
+    AMDGPU.synchronize()
+
     loss
 end

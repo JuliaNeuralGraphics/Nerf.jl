@@ -85,7 +85,6 @@ function render!(
     V <: AbstractVector{SVector{3, Float32}},
     N <: AbstractVector{SVector{3, Float32}},
 }
-    BACKEND_NAME == "ROC" && GC.gc(false) # FIXME
     reset!(r)
     for i in 1:spp
         r.tile_idx = 0
@@ -166,8 +165,6 @@ function trace(
     n_alive = n_rays = length(rays)
 
     for step in 1:max_steps
-        BACKEND_NAME == "ROC" && GC.gc(false) # FIXME
-
         n_alive = compact!(bundle; n_alive, min_transmittance)
         n_alive == 0 && break
 

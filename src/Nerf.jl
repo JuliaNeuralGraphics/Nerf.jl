@@ -86,7 +86,6 @@ include("marching_tetrahedra/marching_tetrahedra.jl")
 
 function sync_free!(Backend, args...)
     unsafe_free!.(args)
-    KernelAbstractions.synchronize(Backend) # synchronize after free, to be able to HSA allocate.
 end
 
 @info "[Nerf.jl] Backend: $BACKEND_NAME"
