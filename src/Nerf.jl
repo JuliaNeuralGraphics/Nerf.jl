@@ -91,6 +91,11 @@ end
 @info "[Nerf.jl] Backend: $BACKEND_NAME"
 @info "[Nerf.jl] Device: $Backend"
 
+# TODO
+# - use Flux for models
+# - non-allocating renderer (except NN part)
+# - get rid of sync_free
+
 function main()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
@@ -105,7 +110,7 @@ function main()
         loss = step!(trainer)
         @show i, loss
 
-        i % 1000 == 0 || continue
+        i % 250 == 0 || continue
 
         pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
         set_projection!(camera, get_pose(dataset, pose_idx)...)

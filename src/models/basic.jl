@@ -40,9 +40,7 @@ function _check_mode(mode)
         "`mode`=`$mode` must be either `Val{:NOIG}()` or `Val{:IG}()`."))
 end
 
-function (b::BasicField)(
-    points::P, directions::D, θ, mode = Val{:NOIG}(),
-) where {
+function (b::BasicField)(points::P, directions::D, θ, mode = Val{:NOIG}()) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
     _check_mode(mode)
