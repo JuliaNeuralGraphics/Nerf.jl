@@ -21,11 +21,11 @@ function Adapt.adapt_structure(to, bundle::RayBundle)
         bundle.n_samples, bundle.n_rays)
 end
 
-function RayBundle(dev; n_rays::Int)
-    directions = similar(dev, SVector{3, Float32}, n_rays)
-    thread_indices = similar(dev, UInt32, n_rays)
-    image_indices = similar(dev, UInt32, n_rays)
-    span = similar(dev, SVector{3, UInt32}, n_rays)
+function RayBundle(Backend; n_rays::Int)
+    directions = allocate(Backend, SVector{3, Float32}, n_rays)
+    thread_indices = allocate(Backend, UInt32, n_rays)
+    image_indices = allocate(Backend, UInt32, n_rays)
+    span = allocate(Backend, SVector{3, UInt32}, n_rays)
     RayBundle(directions, thread_indices, image_indices, span, zero(UInt32), zero(UInt32))
 end
 
@@ -37,18 +37,18 @@ function RayBundle(
     R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
     T <: AbstractVector{SVector{3, Float32}},
 }
-    dev = get_device(occupancy)
-    bundle = RayBundle(dev; n_rays)
+    Backend = get_backend(occupancy)
+    bundle = RayBundle(Backend; n_rays)
 
-    steps_counter = zeros(dev, UInt32, (1,))
-    rays_counter = zeros(dev, UInt32, (1,))
+    steps_counter = KernelAbstractions.zeros(Backend, UInt32, (1,))
+    rays_counter = KernelAbstractions.zeros(Backend, UInt32, (1,))
 
     resolution::UInt32 = get_resolution(occupancy)
     n_levels::UInt32 = get_n_levels(occupancy)
-    wait(generate_ray_bundle!(dev)(
+    generate_ray_bundle!(Backend)(
         bundle, steps_counter, rays_counter, rng_state,
         cone, bbox, rotations, translations, intrinsics,
-        occupancy.binary, n_levels, resolution; ndrange=n_rays))
+        occupancy.binary, n_levels, resolution; ndrange=n_rays)
 
     n_samples::UInt32 = Array(steps_counter)[1]
     rc::UInt32 = Array(rays_counter)[1]
@@ -62,7 +62,7 @@ end
 
 Base.length(b::RayBundle) = Int(b.n_rays)
 
-function unsafe_free!(b::RayBundle)
+function KernelAbstractions.unsafe_free!(b::RayBundle)
     unsafe_free!(b.span)
     unsafe_free!(b.directions)
     unsafe_free!(b.image_indices)
@@ -86,16 +86,16 @@ function Adapt.adapt_structure(to, samples::RaySamples)
         adapt(to, samples.deltas), samples.length)
 end
 
-function RaySamples(dev; n_samples::Int)
-    points = similar(dev, SVector{3, Float32}, n_samples)
-    directions = similar(dev, SVector{3, Float32}, n_samples)
-    δ = similar(dev, Float32, n_samples)
+function RaySamples(Backend; n_samples::Int)
+    points = allocate(Backend, SVector{3, Float32}, n_samples)
+    directions = allocate(Backend, SVector{3, Float32}, n_samples)
+    δ = allocate(Backend, Float32, n_samples)
     RaySamples(points, directions, δ, UInt32(n_samples))
 end
 
 Base.length(s::RaySamples) = Int(s.length)
 
-function unsafe_free!(s::RaySamples)
+function KernelAbstractions.unsafe_free!(s::RaySamples)
     unsafe_free!(s.points)
     unsafe_free!(s.directions)
     unsafe_free!(s.deltas)
@@ -105,14 +105,14 @@ function materialize(
     bundle::RayBundle, occupancy::OccupancyGrid,
     cone::Cone, bbox::BBox, translations::T,
 ) where T <: AbstractVector{SVector{3, Float32}}
-    dev = get_device(occupancy)
-    samples = RaySamples(dev; n_samples=Int(bundle.n_samples))
+    Backend = get_backend(occupancy)
+    samples = RaySamples(Backend; n_samples=Int(bundle.n_samples))
 
     resolution::UInt32 = get_resolution(occupancy)
     n_levels::UInt32 = get_n_levels(occupancy)
-    wait(materialize_ray_bundle!(dev)(
+    materialize_ray_bundle!(Backend)(
         samples, bundle, cone, bbox, translations,
-        occupancy.binary, n_levels, resolution; ndrange=length(bundle)))
+        occupancy.binary, n_levels, resolution; ndrange=length(bundle))
     samples
 end
 

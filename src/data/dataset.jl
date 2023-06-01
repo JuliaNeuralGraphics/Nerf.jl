@@ -1,11 +1,16 @@
 include("images.jl")
 include("intrinsics.jl")
 
-struct Dataset{D, R, T}
-    images::D
+struct Dataset{
+    I <: Images,
+    R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
+    T <: AbstractVector{SVector{3, Float32}},
+    C <: CameraIntrinsics,
+}
+    images::I
     rotations::R
     translations::T
-    intrinsics::CameraIntrinsics
+    intrinsics::C
 
     frame_filenames::Vector{String}
     rotations_host::Vector{SMatrix{3, 3, Float32, 9}}
@@ -17,7 +22,7 @@ struct Dataset{D, R, T}
 end
 
 function Dataset(
-    dev; config_file::String,
+    backend; config_file::String,
     scale::Float32 = 0.33f0,
     offset = SVector{3, Float32}(0.5f0, 0.5f0, 0.5f0),
 )
@@ -32,7 +37,6 @@ function Dataset(
     has_metadata = (
         "w" in keys(config) && "fl_x" in keys(config) &&
         "cx" in keys(config) && "k1" in keys(config))
-    is_synthetic = !has_metadata
 
     # HACK:
     # config file for synthetic NeRF datasets does not specify file extension,
@@ -82,15 +86,9 @@ function Dataset(
         intrinsics = CameraIntrinsics(width(images), height(images), fov)
     end
 
-    if dev isa CPU
-        device_rotations = rotations
-        device_translations = translations
-        device_images = images
-    else
-        device_rotations = to_device(dev, rotations)
-        device_translations = to_device(dev, translations)
-        device_images = adapt(type_from_device(dev), images)
-    end
+    device_rotations = adapt(backend, rotations)
+    device_translations = adapt(backend, translations)
+    device_images = adapt(backend, images)
     Dataset(
         device_images, device_rotations, device_translations, intrinsics,
         frame_filenames, rotations, translations, scale, offset, bbox_scale)

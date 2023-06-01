@@ -11,20 +11,20 @@ function marching_tetrahedra(
     consumer, renderer::Renderer, train_bbox::BBox;
     threshold::Float32, subdivide::Integer = 1,
 )
-    dev = get_device(renderer)
+    Backend = get_backend(renderer)
 
     grid_vertices_host, grid_indices_host = _get_tetrahedra_grid()
-    grid_vertices = to_device(dev, grid_vertices_host)
-    grid_indices = to_device(dev, grid_indices_host)
+    grid_vertices = adapt(Backend, grid_vertices_host)
+    grid_indices = adapt(Backend, grid_indices_host)
     for _ in 1:subdivide
         grid_vertices, grid_indices = subdivide_tetrahedra(
             grid_vertices, nothing; indices=grid_indices)
     end
 
-    positions = similar(dev, SVector{3, Float32}, size(grid_vertices, 2))
-    wait(generate_mt_grid_samples!(dev)(
+    positions = allocate(Backend, SVector{3, Float32}, size(grid_vertices, 2))
+    generate_mt_grid_samples!(Backend)(
         positions, reinterpret(SVector{3, Float32}, grid_vertices),
-        renderer.bbox, train_bbox; ndrange=length(positions)))
+        renderer.bbox, train_bbox; ndrange=length(positions))
 
     raw_positions = reshape(reinterpret(Float32, positions), 3, :)
     densities = consumer(raw_positions) .- threshold
@@ -33,8 +33,8 @@ function marching_tetrahedra(
         grid_vertices, densities; indices=grid_indices)
     vertices = reinterpret(SVector{3, Float32}, reshape(raw_vertices, :))
     # Transform vertices global CS.
-    wait(mt_to_global_cs!(dev)(
-        vertices, renderer.bbox; ndrange=length(vertices)))
+    mt_to_global_cs!(Backend)(
+        vertices, renderer.bbox; ndrange=length(vertices))
 
     indices = reshape(raw_indices, :)
     @assert maximum(indices) < length(vertices)

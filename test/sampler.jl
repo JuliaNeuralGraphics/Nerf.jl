@@ -5,8 +5,8 @@
     resolution = 128
 
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
-    dataset = Nerf.Dataset(DEVICE; config_file)
-    occupancy = Nerf.OccupancyGrid(DEVICE; n_levels, resolution)
+    dataset = Nerf.Dataset(Backend; config_file)
+    occupancy = Nerf.OccupancyGrid(Backend; n_levels, resolution)
     cone = Nerf.Cone(;
         angle=Nerf.get_cone_angle(dataset), steps=ray_steps,
         resolution=Nerf.get_resolution(occupancy),
@@ -20,7 +20,7 @@
         occupancy; rng_state=Nerf.PCG_STATE, cone, bbox, step=0,
         update_frequency=16, n_levels=Nerf.get_n_levels(dataset), decay=1f0,
     ) do points
-        rand(DEVICE, Float32, (size(points, 2),))
+        adapt(Backend, rand(Float32, (size(points, 2),)))
     end
 
     bundle = Nerf.RayBundle(
@@ -30,8 +30,8 @@
     samples = Nerf.materialize(
         bundle, occupancy, cone, bbox, dataset.translations)
 
-    bundle_host = Nerf.Adapt.adapt(Array, bundle)
-    samples_host = Nerf.Adapt.adapt(Array, samples)
+    bundle_host = adapt(Array, bundle)
+    samples_host = adapt(Array, samples)
 
     valid_samples = true
     total_steps = 0

@@ -26,21 +26,21 @@ end
 end
 
 @testset "Deterministic result" begin
-    ge = Nerf.GridEncoding(DEVICE)
+    ge = Nerf.GridEncoding(Backend)
     θ = Nerf.init(ge)
     fill!(θ, 1f0)
 
-    x = ones(DEVICE, Float32, (3, 16))
+    x = KernelAbstractions.ones(Backend, Float32, (3, 16))
     y = ge(x, θ)
     @test sum(y) == 512f0
 end
 
 @testset "Hashgrid gradients" begin
-    ge = Nerf.GridEncoding(DEVICE)
+    ge = Nerf.GridEncoding(Backend)
     θ = Nerf.init(ge)
 
     n = 16
-    x = rand(DEVICE, Float32, (3, n))
+    x = adapt(Backend, rand(Float32, (3, n)))
 
     ∇ = Zygote.gradient(θ) do θ
         sum(ge(x, θ))
@@ -66,7 +66,8 @@ end
     y, back = Zygote.pullback(x) do xi
         ge(xi, θ, Val{:IG}())
     end
-    ∇ = back(ones(DEVICE, Float32, size(y)))[1]
+    Δ = KernelAbstractions.ones(Backend, Float32, size(y))
+    ∇ = back(Δ)[1]
     @test size(∇) == (3, n)
     @test !any(isnan.(∇))
 end

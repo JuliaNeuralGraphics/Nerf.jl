@@ -1,7 +1,6 @@
 @testset "Render cube" begin
-    dev = DEVICE
-    model = Nerf.BasicModel(Nerf.BasicField(dev))
-    dataset = Nerf.Dataset(dev; config_file=DEFAULT_CONFIG_FILE)
+    model = Nerf.BasicModel(Nerf.BasicField(Backend))
+    dataset = Nerf.Dataset(Backend; config_file=DEFAULT_CONFIG_FILE)
     trainer = Nerf.Trainer(model, dataset; n_rays=1024, ray_steps=1024, n_levels=5)
 
     # Fill occupancy with cube at 0th level.
@@ -22,13 +21,13 @@
     Nerf.update_binary!(trainer.occupancy)
 
     camera = Nerf.Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    renderer = Nerf.Renderer(dev, camera, trainer.bbox, trainer.cone)
+    renderer = Nerf.Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
-    for i in 1:10
+    for i in 1:2
         Nerf.set_projection!(camera, Nerf.get_pose(dataset, i)...)
         Nerf.render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
             # model(points, directions)
-            ones(dev, Float32, (4, size(points, 2))) .* 0.5f0
+            KernelAbstractions.ones(Backend, Float32, (4, size(points, 2))) .* 0.5f0
         end
         save("image-$i.png", RGB.(Nerf.to_image(renderer.buffer)))
     end

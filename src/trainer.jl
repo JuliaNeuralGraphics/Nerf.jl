@@ -1,7 +1,7 @@
-mutable struct Trainer{M}
+mutable struct Trainer{M, D <: Dataset, O <: OccupancyGrid}
     model::M
-    dataset::Dataset
-    occupancy::OccupancyGrid
+    dataset::D
+    occupancy::O
     bbox::BBox
     cone::Cone
 
@@ -14,14 +14,14 @@ mutable struct Trainer{M}
 end
 
 function Trainer(
-    model, dataset::Dataset;
+    model, dataset::D;
     n_rays::Int = 1024, ray_steps::Int = 1024, n_levels::Int = 5,
     occupancy_update_frequency::Int = 16,
     occupancy_resolution::Int = 128,
     occupancy_decay::Float32 = 0.95f0,
-)
-    dev = get_device(model)
-    occupancy = OccupancyGrid(dev; n_levels, resolution=occupancy_resolution)
+) where D <: Dataset
+    Backend = get_backend(model)
+    occupancy = OccupancyGrid(Backend; n_levels, resolution=occupancy_resolution)
     cone = Cone(;
         angle=get_cone_angle(dataset), steps=ray_steps,
         resolution=get_resolution(occupancy), n_levels)
@@ -57,7 +57,6 @@ function set_dataset!(t::Trainer, dataset::Dataset)
 end
 
 function step!(t::Trainer)
-    BACKEND == "ROC" && GC.gc(false) # FIXME
     prepare!(t)
 
     bundle = RayBundle(
@@ -74,8 +73,7 @@ function step!(t::Trainer)
         bundle, samples, images=t.dataset.images,
         n_rays=t.n_rays, rng_state=t.rng_state)
 
-    unsafe_free!(bundle)
-    unsafe_free!(samples)
+    sync_free!(get_backend(t.model), bundle, samples)
 
     t.rng_state = advance(t.rng_state)
     t.step += 1

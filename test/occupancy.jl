@@ -1,7 +1,7 @@
 @testset "Density bitfield update" begin
     resolution = 128
     n_levels = 5
-    occupancy = Nerf.OccupancyGrid(DEVICE; n_levels, resolution)
+    occupancy = Nerf.OccupancyGrid(Backend; n_levels, resolution)
 
     # Initially density is 0.
     @test all(Array(occupancy.density) .≈ 0f0)

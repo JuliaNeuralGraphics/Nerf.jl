@@ -1,23 +1,21 @@
-function spherical_harmonics(x::T) where T
+function spherical_harmonics(x)
     n_features = 16
-    y = similar(device_from_type(T), eltype(x), (n_features, size(x, 2)))
+    y = similar(x, (n_features, size(x, 2)))
     spherical_harmonics!(y, x)
 end
 
-function spherical_harmonics!(y::T, x) where T
-    wait(_spherical_harmonics!(device_from_type(T))(y, x; ndrange=size(x, 2)))
+function spherical_harmonics!(y, x)
+    _spherical_harmonics!(get_backend(x))(y, x; ndrange=size(x, 2))
     y
 end
 
 function ∇spherical_harmonics(∂L∂y::T, x) where T
-    dev = device_from_type(T)
-    ∂L∂x = similar(dev, eltype(∂L∂y), size(x))
+    ∂L∂x = similar(∂L∂y, size(x))
     ∇spherical_harmonics!(∂L∂x, ∂L∂y, x)
 end
 
-function ∇spherical_harmonics!(∂L∂x, ∂L∂y::T, x) where T
-    dev = device_from_type(T)
-    wait(_∇spherical_harmonics!(dev)(∂L∂x, ∂L∂y, x; ndrange=size(x, 2)))
+function ∇spherical_harmonics!(∂L∂x, ∂L∂y, x)
+    _∇spherical_harmonics!(get_backend(x))(∂L∂x, ∂L∂y, x; ndrange=size(x, 2))
     ∂L∂x
 end
 

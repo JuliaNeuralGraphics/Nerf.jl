@@ -8,7 +8,7 @@ using ImageCore
 using ImageTransformations
 using JSON
 using KernelAbstractions
-using KernelAbstractions: @atomic
+using KernelAbstractions: @atomic, unsafe_free!
 using LinearAlgebra
 using Preferences
 using Quaternions
@@ -16,6 +16,8 @@ using Rotations
 using StaticArrays
 using Statistics
 using Zygote
+
+# TODO rand on device
 
 include("kautils.jl")
 
@@ -82,25 +84,33 @@ include("models/basic.jl")
 include("marching_cubes/marching_cubes.jl")
 include("marching_tetrahedra/marching_tetrahedra.jl")
 
-@info "[Nerf.jl] Backend: $BACKEND"
-@info "[Nerf.jl] Device: $DEVICE"
+function sync_free!(Backend, args...)
+    unsafe_free!.(args)
+end
+
+@info "[Nerf.jl] Backend: $BACKEND_NAME"
+@info "[Nerf.jl] Device: $Backend"
+
+# TODO
+# - use Flux for models
+# - non-allocating renderer (except NN part)
+# - get rid of sync_free
 
 function main()
-    dev = DEVICE
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
-    dataset = Dataset(dev; config_file)
+    dataset = Dataset(Backend; config_file)
 
-    model = BasicModel(BasicField(dev))
-    trainer = Trainer(model, dataset)
+    model = BasicModel(BasicField(Backend))
+    trainer = Trainer(model, dataset; n_rays=512)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    renderer = Renderer(dev, camera, trainer.bbox, trainer.cone)
+    renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
     for i in 1:20_000
         loss = step!(trainer)
         @show i, loss
 
-        i % 1000 == 0 || continue
+        i % 250 == 0 || continue
 
         pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
         set_projection!(camera, get_pose(dataset, pose_idx)...)
@@ -132,9 +142,9 @@ end
 
 function benchmark()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
-    dataset = Dataset(DEVICE; config_file)
-    model = BasicModel(BasicField(DEVICE))
-    trainer = Trainer(model, dataset)
+    dataset = Dataset(Backend; config_file)
+    model = BasicModel(BasicField(Backend))
+    trainer = Trainer(model, dataset; n_rays=512)
 
     # GC.enable_logging(true)
 
@@ -143,9 +153,11 @@ function benchmark()
     @time trainer_benchmark(trainer, 10)
     @time trainer_benchmark(trainer, 1000)
 
+    return nothing
+
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(camera, get_pose(dataset, 1)...)
-    renderer = Renderer(DEVICE, camera, trainer.bbox, trainer.cone)
+    renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
     Core.println("Renderer benchmark")
 

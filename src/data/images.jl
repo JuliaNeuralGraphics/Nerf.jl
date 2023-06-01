@@ -38,6 +38,7 @@ end
 @inline function sample(i::Images, xy::SVector{2, Float32}, image_idx::UInt32)
     width::UInt32, height::UInt32 = size(i.data, 2), size(i.data, 3)
     pixel = to_pixel(xy, width, height)
+    # TODO inbounds
     SVector{3, Float32}(
         i.data[1, pixel[1], pixel[2], image_idx],
         i.data[2, pixel[1], pixel[2], image_idx],
