@@ -26,45 +26,43 @@ end
 end
 
 @testset "Deterministic result" begin
-    ge = Nerf.GridEncoding(Backend)
-    θ = Nerf.init(ge)
-    fill!(θ, 1f0)
+    ge = Nerf.GridEncoding() |> Flux.gpu
+    fill!(ge.θ, 1f0)
 
     x = KernelAbstractions.ones(Backend, Float32, (3, 16))
-    y = ge(x, θ)
+    y = ge(x)
     @test sum(y) == 512f0
 end
 
 @testset "Hashgrid gradients" begin
-    ge = Nerf.GridEncoding(Backend)
-    θ = Nerf.init(ge)
+    ge = Nerf.GridEncoding() |> Flux.gpu
 
     n = 16
-    x = adapt(Backend, rand(Float32, (3, n)))
+    x = rand(Float32, (3, n)) |> Flux.gpu
 
-    ∇ = Zygote.gradient(θ) do θ
-        sum(ge(x, θ))
+    ∇ = Zygote.gradient(ge) do ge
+        sum(ge(x))
     end
-    @test size(∇[1]) == size(θ)
+    @test size(∇[1].θ) == size(ge.θ)
 
-    ∇ = Zygote.gradient(θ) do θ
-        sum(ge(x, θ, Val{:IG}()))
+    ∇ = Zygote.gradient(ge) do ge
+        sum(ge(x, Val{:IG}()))
     end
-    @test size(∇[1]) == size(θ)
+    @test size(∇[1].θ) == size(ge.θ)
 
     ∇ = Zygote.gradient(x) do x
-        sum(ge(x, θ, Val{:IG}()))
+        sum(ge(x, Val{:IG}()))
     end
     @test size(∇[1]) == (3, n)
 
-    ∇ = Zygote.gradient(θ, x) do θ, x
-        sum(ge(x, θ, Val{:IG}()))
+    ∇ = Zygote.gradient(ge, x) do ge, x
+        sum(ge(x, Val{:IG}()))
     end
-    @test size(∇[1]) == size(θ)
+    @test size(∇[1].θ) == size(ge.θ)
     @test size(∇[2]) == (3, n)
 
-    y, back = Zygote.pullback(x) do xi
-        ge(xi, θ, Val{:IG}())
+    y, back = Zygote.pullback(x) do x
+        ge(x, Val{:IG}())
     end
     Δ = KernelAbstractions.ones(Backend, Float32, size(y))
     ∇ = back(Δ)[1]

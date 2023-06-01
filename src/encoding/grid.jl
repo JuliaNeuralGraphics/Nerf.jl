@@ -1,7 +1,8 @@
 include("grid_utils.jl")
 include("grid_kernels.jl")
 
-struct GridEncoding{O}
+struct GridEncoding{O, T}
+    θ::T
     offset_table::O
     n_dims::UInt32
     n_features::UInt32
@@ -10,9 +11,12 @@ struct GridEncoding{O}
     base_resolution::UInt32
     scale::Float32
 end
+Flux.@functor GridEncoding
 
-function GridEncoding(
-    Backend; n_levels::Int = 16, scale::Float32 = 1.5f0,
+Flux.trainable(ge::GridEncoding) = (; θ=ge.θ)
+
+function GridEncoding(;
+    n_levels::Int = 16, scale::Float32 = 1.5f0,
     base_resolution::Int = 16, n_features::Int = 2, hashmap_size::Int = 19,
 )
     @assert n_levels < 34 "Too many levels for the offset table."
@@ -39,8 +43,10 @@ function GridEncoding(
 
     offset_table[end] = offset
     n_params = offset * n_features
+    θ = rand(Float32, n_features, n_params ÷ n_features) .* 2f-4 .- 1f-4
+
     GridEncoding(
-        adapt(Backend, offset_table), UInt32(n_dims), UInt32(n_features),
+        θ, offset_table, UInt32(n_dims), UInt32(n_features),
         UInt32(n_levels), UInt32(n_params), UInt32(base_resolution), scale)
 end
 
@@ -52,31 +58,26 @@ function _get_kernel_params(ge)
     NPD, NFPL
 end
 
-function init(ge::GridEncoding)
-    shape = Int64.((ge.n_features, ge.n_params ÷ ge.n_features))
-    adapt(get_backend(ge), rand(Float32, shape) .* 2f-4 .- 1f-4)
-end
-
-function reset!(::GridEncoding, θ)
-    copy!(θ, rand(Float32, size(θ)) .* 2f-4 .- 1f-4)
+function reset!(ge::GridEncoding)
+    copy!(ge.θ, rand(Float32, size(θ)) .* 2f-4 .- 1f-4)
 end
 
 function get_output_shape(ge::GridEncoding)
     Int.((ge.n_features, ge.n_levels))
 end
 
-function (ge::GridEncoding)(x, θ)
+function (ge::GridEncoding)(x)
     Backend = get_backend(ge)
     n = size(x, 2)
     y = allocate(Backend, Float32, (get_output_shape(ge)..., n))
     NPD, NFPL = _get_kernel_params(ge)
     grid_kernel!(Backend)(
-        y, nothing, x, θ, ge.offset_table, NPD, NFPL,
+        y, nothing, x, ge.θ, ge.offset_table, NPD, NFPL,
         ge.base_resolution, log2(ge.scale); ndrange=(n, ge.n_levels))
     reshape(y, :, n)
 end
 
-function (ge::GridEncoding)(x, θ, ::Val{:IG})
+function (ge::GridEncoding)(x, ::Val{:IG})
     Backend = get_backend(ge)
     n = size(x, 2)
     y = allocate(Backend, Float32, (get_output_shape(ge)..., n))
@@ -85,16 +86,16 @@ function (ge::GridEncoding)(x, θ, ::Val{:IG})
 
     NPD, NFPL = _get_kernel_params(ge)
     grid_kernel!(Backend)(
-        y, ∂y∂x, x, θ, ge.offset_table, NPD, NFPL, ge.base_resolution,
+        y, ∂y∂x, x, ge.θ, ge.offset_table, NPD, NFPL, ge.base_resolution,
         log2(ge.scale); ndrange=(n, ge.n_levels))
     reshape(y, :, n), ∂y∂x
 end
 
-function ∇(ge::GridEncoding, ∂f∂y, x, θ)
+function ∇(ge::GridEncoding, ∂f∂y, x)
     Backend = get_backend(ge)
     n = size(x, 2)
     NPD, NFPL = _get_kernel_params(ge)
-    ∂grid = KernelAbstractions.zeros(Backend, Float32, size(θ))
+    ∂grid = KernelAbstractions.zeros(Backend, Float32, size(ge.θ))
     ∇grid_kernel!(Backend)(
         ∂grid, ∂f∂y, x, ge.offset_table, NPD, NFPL, ge.base_resolution,
         log2(ge.scale); ndrange=(n, ge.n_levels))
@@ -111,23 +112,22 @@ function ∇grid_input(ge::GridEncoding, ∂L∂y, ∂y∂x)
     ∂L∂x
 end
 
-function ChainRulesCore.rrule(ge::GridEncoding, x, θ)
+function ChainRulesCore.rrule(ge::GridEncoding, x)
     n = size(x, 2)
     function encode_pullback(Δ)
-        Δ2 = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
-        Tangent{GridEncoding}(), NoTangent(), ∇(ge, Δ2, x, θ)
+        Δ = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
+        Tangent{GridEncoding}(;θ=∇(ge, Δ, x)), NoTangent()
     end
-    ge(x, θ), encode_pullback
+    ge(x), encode_pullback
 end
 
-function ChainRulesCore.rrule(ge::GridEncoding, x, θ, ::Val{:IG})
+function ChainRulesCore.rrule(ge::GridEncoding, x, ::Val{:IG})
     n = size(x, 2)
-    y, ∂y∂x = ge(x, θ, Val{:IG}())
+    y, ∂y∂x = ge(x, Val{:IG}())
     function encode_pullback(Δ)
-        Δ2 = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
-        (
-            Tangent{GridEncoding}(), @thunk(∇grid_input(ge, Δ2, ∂y∂x)),
-            @thunk(∇(ge, Δ2, x, θ)), NoTangent())
+        Δ = reshape(unthunk(Δ), (get_output_shape(ge)..., n))
+        (Tangent{GridEncoding}(; θ=@thunk(∇(ge, Δ, x))),
+            @thunk(∇grid_input(ge, Δ, ∂y∂x)), NoTangent())
     end
     y, encode_pullback
 end

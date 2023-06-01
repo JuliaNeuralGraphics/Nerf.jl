@@ -3,9 +3,10 @@ struct BasicField{G <: GridEncoding, D, C}
     density_mlp::D
     color_mlp::C
 end
+Flux.@functor BasicField
 
-function BasicField(Backend; backbone_size::Int = 16, grid_kwargs...)
-    ge = GridEncoding(Backend; grid_kwargs...)
+function BasicField(; backbone_size::Int = 16, grid_kwargs...)
+    ge = GridEncoding(; grid_kwargs...)
     density_mlp_input = prod(get_output_shape(ge))
     color_mlp_input = 16 + backbone_size # 16 for spherical harmonics
     density_mlp = Chain(
@@ -20,18 +21,11 @@ end
 
 KernelAbstractions.get_backend(b::BasicField) = get_backend(b.grid_encoding)
 
-function init(b::BasicField)
-    Backend = get_backend(b)
-    θge = init(b.grid_encoding)
-    θdensity = map(l -> adapt(Backend, l), init(b.density_mlp))
-    θcolor = map(l -> adapt(Backend, l), init(b.color_mlp))
-    (; θge, θdensity, θcolor)
-end
-
-function reset!(b::BasicField, θ)
-    reset!(b.grid_encoding, θ.θge)
-    reset!(b.density_mlp, θ.θdensity)
-    reset!(b.color_mlp, θ.θcolor)
+function reset!(b::BasicField)
+    reset!(b.grid_encoding)
+    # TODO reset chain
+    reset!(b.density_mlp)
+    reset!(b.color_mlp)
 end
 
 function _check_mode(mode)
@@ -40,45 +34,45 @@ function _check_mode(mode)
         "`mode`=`$mode` must be either `Val{:NOIG}()` or `Val{:IG}()`."))
 end
 
-function (b::BasicField)(points::P, directions::D, θ, mode = Val{:NOIG}()) where {
+function (b::BasicField)(points::P, directions::D, mode = Val{:NOIG}()) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
     _check_mode(mode)
     if mode == Val{:NOIG}()
-        encoded_points = b.grid_encoding(points, θ.θge)
+        encoded_points = b.grid_encoding(points)
     else
-        encoded_points = b.grid_encoding(points, θ.θge, mode)
+        encoded_points = b.grid_encoding(points, mode)
     end
     encoded_directions = spherical_harmonics(directions)
-    backbone = b.density_mlp(encoded_points, θ.θdensity)
-    rgb = b.color_mlp(vcat(backbone, encoded_directions), θ.θcolor)
+    backbone = b.density_mlp(encoded_points)
+    rgb = b.color_mlp(vcat(backbone, encoded_directions))
     vcat(rgb, reshape(backbone[1, :], 1, :))
 end
 
-function density(b::BasicField, points::P, θ, mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
+function density(b::BasicField, points::P, mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
     _check_mode(mode)
     if mode == Val{:NOIG}()
-        encoded_points = b.grid_encoding(points, θ.θge)
+        encoded_points = b.grid_encoding(points)
     else
-        encoded_points = b.grid_encoding(points, θ.θge, mode)
+        encoded_points = b.grid_encoding(points, mode)
     end
-    b.density_mlp(encoded_points, θ.θdensity)[1, :]
+    b.density_mlp(encoded_points)[1, :]
 end
 
-function _dealloc_density(b::BasicField, points::P, θ) where P <: AbstractMatrix{Float32}
+function _dealloc_density(b::BasicField, points::P) where P <: AbstractMatrix{Float32}
     Backend = get_backend(b)
 
-    encoded_points = b.grid_encoding(points, θ.θge)
-    tmp = b.density_mlp.layers[1](encoded_points, θ.θdensity[1])
+    encoded_points = b.grid_encoding(points)
+    tmp = b.density_mlp.layers[1](encoded_points)
     sync_free!(Backend, encoded_points)
-    dst = b.density_mlp.layers[2](tmp, θ.θdensity[2])
+    dst = b.density_mlp.layers[2](tmp)
     sync_free!(Backend, tmp)
     y = dst[1, :]
     sync_free!(Backend, dst)
     return y
 end
 
-function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: AbstractMatrix{Float32}
+function batched_density(b::BasicField, points::P; batch::Int) where P <: AbstractMatrix{Float32}
     n = size(points, 2)
     n_iterations = ceil(Int, n / batch)
 
@@ -88,7 +82,7 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
 
-        batch_σ = _dealloc_density(b, @view(points[:, i_start:i_end]), θ)
+        batch_σ = _dealloc_density(b, @view(points[:, i_start:i_end]))
         σ[i_start:i_end] .= batch_σ
         sync_free!(Backend, batch_σ)
     end

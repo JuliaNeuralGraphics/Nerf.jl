@@ -16,6 +16,7 @@ using Rotations
 using StaticArrays
 using Statistics
 using Zygote
+using Flux
 
 # TODO rand on device
 
@@ -75,7 +76,7 @@ include("ray.jl")
 include("acceleration/occupancy.jl")
 include("encoding/grid.jl")
 include("encoding/spherical_harmonics.jl")
-include("nn/nn.jl")
+# include("nn/nn.jl")
 include("sampler.jl")
 include("loss.jl")
 include("trainer.jl")
@@ -165,6 +166,11 @@ function benchmark()
     @time render_benchmark(renderer, trainer, 10)
 
     nothing
+end
+
+function mm()
+    bf = BasicField() |> Flux.gpu
+    return
 end
 
 end
