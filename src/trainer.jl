@@ -89,15 +89,12 @@ function prepare!(t::Trainer)
             rotations=t.dataset.rotations, translations=t.dataset.translations)
     end
 
-    AMDGPU.Mem.definitely_free() do
-        t.rng_state = update!(
-            t.occupancy; rng_state=t.rng_state, cone=t.cone, bbox=t.bbox,
-            step=t.step, update_frequency=t.occupancy_update_frequency,
-            n_levels=get_n_levels(t.dataset), decay=t.occupancy_decay,
-        ) do points
-            batched_density(t.model, points; batch=512 * 512)
-        end
+    t.rng_state = update!(
+        t.occupancy; rng_state=t.rng_state, cone=t.cone, bbox=t.bbox,
+        step=t.step, update_frequency=t.occupancy_update_frequency,
+        n_levels=get_n_levels(t.dataset), decay=t.occupancy_decay,
+    ) do points
+        batched_density(t.model, points; batch=512 * 512)
     end
-    AMDGPU.synchronize()
     return nothing
 end

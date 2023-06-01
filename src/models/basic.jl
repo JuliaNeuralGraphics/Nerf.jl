@@ -146,14 +146,11 @@ function step!(
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
     loss::Float32 = 0f0
-    AMDGPU.Mem.definitely_free() do
-        loss, ∇ = Zygote.withgradient(m.θ) do θ
-            rgba = m.field(points, directions, θ)
-            photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
-        end
-        step!(m.optimizer, m.θ, ∇[1]; dispose=true)
+    loss, ∇ = Zygote.withgradient(m.θ) do θ
+        rgba = m.field(points, directions, θ)
+        photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
     end
-    AMDGPU.synchronize()
+    step!(m.optimizer, m.θ, ∇[1]; dispose=true)
 
     loss
 end

@@ -177,23 +177,20 @@ function trace(
 
         raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
         raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
-        AMDGPU.Mem.definitely_free() do
-            evaluated_rgba = reinterpret(SVector{4, Float32},
-                reshape(consumer(raw_points, raw_directions), :))
+        evaluated_rgba = reinterpret(SVector{4, Float32},
+            reshape(consumer(raw_points, raw_directions), :))
 
-            ∇n = (r.mode == Normals) ?
-                reinterpret(SVector{3, Float32},
-                    reshape(normals_consumer(raw_points), :)) :
-                nothing
+        ∇n = (r.mode == Normals) ?
+            reinterpret(SVector{3, Float32},
+                reshape(normals_consumer(raw_points), :)) :
+            nothing
 
-            (; alive_rays, alive_rgba) = alive(bundle)
-            compose!(Backend)(
-                alive_rgba, span, evaluated_rgba, ∇n,
-                alive_rays, samples, r.mode,
-                camera_origin, camera_forward,
-                r.bbox, min_transmittance, UInt32(n_steps); ndrange=n_alive)
-        end
-        AMDGPU.synchronize()
+        (; alive_rays, alive_rgba) = alive(bundle)
+        compose!(Backend)(
+            alive_rgba, span, evaluated_rgba, ∇n,
+            alive_rays, samples, r.mode,
+            camera_origin, camera_forward,
+            r.bbox, min_transmittance, UInt32(n_steps); ndrange=n_alive)
 
         sync_free!(Backend, samples, span)
     end
