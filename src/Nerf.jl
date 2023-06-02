@@ -18,8 +18,6 @@ using Statistics
 using Zygote
 using Flux
 
-# TODO rand on device
-
 include("kautils.jl")
 
 struct Ray

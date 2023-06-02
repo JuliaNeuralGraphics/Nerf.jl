@@ -93,16 +93,19 @@ function update!(
     raw_points = reshape(reinterpret(Float32, points), 3, :)
     log_densities = density_eval_fn(raw_points)
     unsafe_free!(points)
+    KernelAbstractions.synchronize(kab)
 
     tmp_density = KernelAbstractions.zeros(kab, Float32, size(oc.density))
     distribute_density!(kab)(
         reinterpret(UInt32, tmp_density), log_densities,
         indices, cone.min_stepsize; ndrange=length(indices))
     unsafe_free!.((indices, log_densities))
+    KernelAbstractions.synchronize(kab)
 
     ema_update!(kab)(
         oc.density, tmp_density, decay; ndrange=length(oc.density))
     unsafe_free!(tmp_density)
+    KernelAbstractions.synchronize(kab)
 
     update_binary!(oc; threshold)
     KernelAbstractions.synchronize(kab)
