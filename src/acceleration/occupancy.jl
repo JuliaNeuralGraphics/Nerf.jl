@@ -73,11 +73,11 @@ function update!(
 
     step ÷= update_frequency
 
-    Backend = get_backend(oc)
-    points = allocate(Backend, SVector{3, Float32}, (n_samples,))
-    indices = allocate(Backend, UInt32, (n_samples,))
+    kab = get_backend(oc)
+    points = allocate(kab, SVector{3, Float32}, (n_samples,))
+    indices = allocate(kab, UInt32, (n_samples,))
 
-    gp_kernel = generate_points!(Backend)
+    gp_kernel = generate_points!(kab)
     gp_kernel(
         points, indices, rng_state, density, bbox,
         -0.01f0, UInt32(step); ndrange=n_uniform)
@@ -92,28 +92,29 @@ function update!(
 
     raw_points = reshape(reinterpret(Float32, points), 3, :)
     log_densities = density_eval_fn(raw_points)
-    sync_free!(Backend, points)
+    unsafe_free!(points)
 
-    tmp_density = KernelAbstractions.zeros(Backend, Float32, size(oc.density))
-    distribute_density!(Backend)(
+    tmp_density = KernelAbstractions.zeros(kab, Float32, size(oc.density))
+    distribute_density!(kab)(
         reinterpret(UInt32, tmp_density), log_densities,
         indices, cone.min_stepsize; ndrange=length(indices))
-    sync_free!(Backend, indices, log_densities)
+    unsafe_free!.((indices, log_densities))
 
-    ema_update!(Backend)(
+    ema_update!(kab)(
         oc.density, tmp_density, decay; ndrange=length(oc.density))
-    sync_free!(Backend, tmp_density)
+    unsafe_free!(tmp_density)
 
     update_binary!(oc; threshold)
+    KernelAbstractions.synchronize(kab)
     return rng_state
 end
 
 function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
-    Backend = get_backend(oc)
+    kab = get_backend(oc)
 
     oc.mean_density = mean(x -> max(0f0, x), @view(oc.density[:, :, :, 1]))
     threshold = min(threshold, oc.mean_density)
-    distribute_to_binary!(Backend)(
+    distribute_to_binary!(kab)(
         oc.binary, oc.density, threshold; ndrange=length(oc.binary))
 
     binary_level_length = offset_binary(oc, 1)
@@ -121,7 +122,7 @@ function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
     ndrange = binary_level_length ÷ 8
     n_levels = size(oc.density, 4)
 
-    bmp_kernel = binary_max_pool!(Backend)
+    bmp_kernel = binary_max_pool!(kab)
     for l in 1:(n_levels - 1)
         s, m, e = binary_level_length .* ((l - 1), l, (l + 1))
         prev_level = @view(oc.binary[(s + 1):m])
@@ -222,9 +223,9 @@ end
 function mark_invisible_regions!(
     oc::OccupancyGrid; intrinsics, rotations, translations,
 )
-    Backend = get_backend(oc)
+    kab = get_backend(oc)
     res_scale = 0.5f0 .* intrinsics.resolution ./ intrinsics.focal
-    _mark_invisible_regions!(Backend)(
+    _mark_invisible_regions!(kab)(
         oc.density, rotations, translations, res_scale;
         ndrange=length(oc.density))
 end

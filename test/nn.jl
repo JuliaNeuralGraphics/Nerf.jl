@@ -1,32 +1,3 @@
-@testset "Chain type-stability" begin
-    for T in (Float32, Float16)
-        @inferred Nerf.Chain(
-            Nerf.Dense{T}(3=>64, Nerf.relu),
-            Nerf.Dense{T}(64=>64, Nerf.relu),
-            Nerf.Dense{T}(64=>3))
-        c = Nerf.Chain(
-            Nerf.Dense{T}(3=>64, Nerf.relu),
-            Nerf.Dense{T}(64=>64, Nerf.relu),
-            Nerf.Dense{T}(64=>3))
-
-        # TODO make inferrable at > 3 length
-        @inferred Nerf.init(c)
-        θ = map(l -> adapt(Backend, l), Nerf.init(c))
-
-        n = 16
-        x = adapt(Backend, rand(T, (3, n)))
-        @inferred c(x, θ)
-        y = c(x, θ)
-        @test eltype(y) == T
-
-        ∇ = Zygote.gradient(θ -> sum(c(x, θ)), θ)
-        # TODO look into it?
-        # @inferred Zygote.gradient(θ -> sum(c(x, θ)), θ)
-
-        @test eltype(∇[1][1]) == T
-    end
-end
-
 @testset "Test normalization works correctly" begin
     n = 2
     host_directions = zeros(Float32, 3, n)

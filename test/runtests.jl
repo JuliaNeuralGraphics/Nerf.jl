@@ -29,15 +29,15 @@ const DEFAULT_CONFIG_FILE::String = joinpath(
     @testset "Spherical harmonics" begin
         include("spherical_harmonics.jl")
     end
-    # @testset "NN" begin
-    #     include("nn.jl")
-    # end
-    # @testset "Occupancy" begin
-    #     include("occupancy.jl")
-    # end
-    # @testset "Sampler" begin
-    #     include("sampler.jl")
-    # end
+    @testset "NN" begin
+        include("nn.jl")
+    end
+    @testset "Occupancy" begin
+        include("occupancy.jl")
+    end
+    @testset "Sampler" begin
+        include("sampler.jl")
+    end
     # @testset "Renderer" begin
     #     include("renderer.jl")
     # end

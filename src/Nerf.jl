@@ -76,38 +76,34 @@ include("ray.jl")
 include("acceleration/occupancy.jl")
 include("encoding/grid.jl")
 include("encoding/spherical_harmonics.jl")
-# include("nn/nn.jl")
 include("sampler.jl")
 include("loss.jl")
 include("trainer.jl")
 include("renderer/renderer.jl")
+include("models/common.jl")
 include("models/basic.jl")
 include("marching_cubes/marching_cubes.jl")
 include("marching_tetrahedra/marching_tetrahedra.jl")
-
-function sync_free!(Backend, args...)
-    unsafe_free!.(args)
-end
 
 @info "[Nerf.jl] Backend: $BACKEND_NAME"
 @info "[Nerf.jl] Device: $Backend"
 
 # TODO
-# - use Flux for models
+# - join Backend and Flux.gpu somehow
 # - non-allocating renderer (except NN part)
-# - get rid of sync_free
 
 function main()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
 
-    model = BasicModel(BasicField(Backend))
+    model = BasicModel(BasicField()) |> Flux.gpu
     trainer = Trainer(model, dataset; n_rays=512)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
+    KernelAbstractions.synchronize(Backend)
 
-    for i in 1:20_000
+    for i in 1:100
         loss = step!(trainer)
         @show i, loss
 
@@ -144,7 +140,7 @@ end
 function benchmark()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
-    model = BasicModel(BasicField(Backend))
+    model = BasicModel(BasicField()) |> Flux.gpu
     trainer = Trainer(model, dataset; n_rays=512)
 
     # GC.enable_logging(true)
@@ -166,11 +162,6 @@ function benchmark()
     @time render_benchmark(renderer, trainer, 10)
 
     nothing
-end
-
-function mm()
-    bf = BasicField() |> Flux.gpu
-    return
 end
 
 end
