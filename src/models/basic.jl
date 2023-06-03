@@ -70,11 +70,11 @@ function _dealloc_density(b::BasicField, points::P, θ) where P <: AbstractMatri
 
     encoded_points = b.grid_encoding(points, θ.θge)
     tmp = b.density_mlp.layers[1](encoded_points, θ.θdensity[1])
-    sync_free!(Backend, encoded_points)
+    unsafe_free!(encoded_points)
     dst = b.density_mlp.layers[2](tmp, θ.θdensity[2])
-    sync_free!(Backend, tmp)
+    unsafe_free!(tmp)
     y = dst[1, :]
-    sync_free!(Backend, dst)
+    unsafe_free!(dst)
     return y
 end
 
@@ -90,7 +90,7 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
 
         batch_σ = _dealloc_density(b, @view(points[:, i_start:i_end]), θ)
         σ[i_start:i_end] .= batch_σ
-        sync_free!(Backend, batch_σ)
+        unsafe_free!(batch_σ)
     end
     σ
 end
@@ -134,7 +134,7 @@ function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     Δ = KernelAbstractions.ones(Backend, Float32, size(Y))
     ∇ = back(Δ)[1]
     n⃗ = safe_normalize(-∇; dims=1) # TODO in-place normalization kernel with negation
-    sync_free!(Backend, Δ, ∇)
+    unsafe_free!.((Δ, ∇))
     n⃗
 end
 

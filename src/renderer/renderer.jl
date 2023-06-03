@@ -128,7 +128,7 @@ function render_tile!(
             offset, r.mode; ndrange=n_hit)
         accumulate!(r.buffer; offset, tile_size)
     end
-    sync_free!(get_backend(r.buffer), bundle)
+    unsafe_free!(bundle)
     return nothing
 end
 
@@ -192,7 +192,7 @@ function trace(
             camera_origin, camera_forward,
             r.bbox, min_transmittance, UInt32(n_steps); ndrange=n_alive)
 
-        sync_free!(Backend, samples, span)
+        unsafe_free!.((samples, span))
     end
     n_hit = Int(Array(bundle.hit_counter)[1])
     n_hit, bundle

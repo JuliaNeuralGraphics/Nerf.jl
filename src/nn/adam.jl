@@ -58,7 +58,7 @@ function _step!(opt::Adam, θ::T, ∇::G, i; dispose::Bool) where {
     for (θᵢ, ∇ᵢ) in zip(θ, ∇)
         i = _step!(opt, θᵢ, ∇ᵢ, i; dispose)
     end
-    i
+    return i
 end
 
 function _step!(opt::Adam, θ::T, ∇::T, i; dispose::Bool) where T <: AbstractArray
@@ -71,9 +71,9 @@ function _step!(opt::Adam, θ::T, ∇::T, i; dispose::Bool) where T <: AbstractA
         opt.μ[i], opt.ν[i], θ, ∇, Float32(opt.current_step),
         opt.lr, opt.β1, opt.β2, opt.ϵ; ndrange=length(θ))
 
-    dispose && sync_free!(get_backend(opt), ∇)
+    dispose && unsafe_free!(∇)
 
-    i + 1
+    return i + 1
 end
 
 @kernel function adam_step_kernel!(

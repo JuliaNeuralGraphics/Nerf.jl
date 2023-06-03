@@ -1,7 +1,7 @@
-# Supported values are: ROC, CUDA.
-const BACKEND_NAME::String = @load_preference("backend", "ROC")
+# Supported values are: AMD, CUDA.
+const BACKEND_NAME::String = @load_preference("backend", "AMD")
 
-@static if BACKEND_NAME == "ROC"
+@static if BACKEND_NAME == "AMD"
     using AMDGPU
     AMDGPU.allowscalar(false)
     const Backend::ROCBackend = ROCBackend()

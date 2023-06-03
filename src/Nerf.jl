@@ -17,8 +17,6 @@ using StaticArrays
 using Statistics
 using Zygote
 
-# TODO rand on device
-
 include("kautils.jl")
 
 struct Ray
@@ -84,24 +82,15 @@ include("models/basic.jl")
 include("marching_cubes/marching_cubes.jl")
 include("marching_tetrahedra/marching_tetrahedra.jl")
 
-function sync_free!(Backend, args...)
-    unsafe_free!.(args)
-end
-
 @info "[Nerf.jl] Backend: $BACKEND_NAME"
 @info "[Nerf.jl] Device: $Backend"
-
-# TODO
-# - use Flux for models
-# - non-allocating renderer (except NN part)
-# - get rid of sync_free
 
 function main()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
 
     model = BasicModel(BasicField(Backend))
-    trainer = Trainer(model, dataset; n_rays=512)
+    trainer = Trainer(model, dataset; n_rays=1024)
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
@@ -110,7 +99,7 @@ function main()
         loss = step!(trainer)
         @show i, loss
 
-        i % 250 == 0 || continue
+        i % 1000 == 0 || continue
 
         pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
         set_projection!(camera, get_pose(dataset, pose_idx)...)
