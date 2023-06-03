@@ -99,7 +99,6 @@ function main()
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
-    KernelAbstractions.synchronize(Backend)
 
     for i in 1:100
         loss = step!(trainer)

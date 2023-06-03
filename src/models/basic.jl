@@ -83,7 +83,9 @@ function batched_density(b::BasicField, points::P; batch::Int) where P <: Abstra
         i_end = min(n, i * batch)
 
         batch_σ = _dealloc_density(b, @view(points[:, i_start:i_end]))
-        KernelAbstractions.synchronize(kab)
+        if BACKEND_NAME == "AMD"
+            KernelAbstractions.synchronize(kab)
+        end
 
         σ[i_start:i_end] .= batch_σ
         unsafe_free!(batch_σ)
@@ -124,18 +126,22 @@ function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     Y, back = Zygote.pullback(points) do p
         density(m.field, p, Val{:IG}())
     end
-    KernelAbstractions.synchronize(kab)
-    GC.gc(false)
-    KernelAbstractions.synchronize(kab)
+    if BACKEND_NAME == "AMD"
+        KernelAbstractions.synchronize(kab)
+        GC.gc(false)
+        KernelAbstractions.synchronize(kab)
+    end
 
     Δ = KernelAbstractions.ones(Backend, Float32, size(Y))
     ∇ = back(Δ)[1]
     n⃗ = safe_normalize(-∇; dims=1) # TODO in-place normalization kernel with negation
 
-    KernelAbstractions.synchronize(kab)
-    unsafe_free!.((Δ, ∇))
-    GC.gc(false)
-    KernelAbstractions.synchronize(kab)
+    if BACKEND_NAME == "AMD"
+        KernelAbstractions.synchronize(kab)
+        unsafe_free!.((Δ, ∇))
+        GC.gc(false)
+        KernelAbstractions.synchronize(kab)
+    end
     n⃗
 end
 
@@ -150,14 +156,16 @@ function step!(
         photometric_loss(rgba; bundle, samples, images, n_rays, rng_state)
     end
     kab = KernelAbstractions.get_backend(m)
-    KernelAbstractions.synchronize(kab)
-    # Since we can't manually free memory during Zygote AD.
-    # Attempt to free it by performing quick GC.
-    GC.gc(false)
-    KernelAbstractions.synchronize(kab)
+    if BACKEND_NAME == "AMD"
+        KernelAbstractions.synchronize(kab)
+        GC.gc(false)
+        KernelAbstractions.synchronize(kab)
+    end
 
     Flux.Optimise.update!(state, m.field, ∇[1]) # TODO replace model from struct?
-    KernelAbstractions.synchronize(kab)
+    if BACKEND_NAME == "AMD"
+        KernelAbstractions.synchronize(kab)
+    end
 
     loss
 end
