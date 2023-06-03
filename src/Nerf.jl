@@ -140,6 +140,25 @@ function benchmark()
     model = BasicModel(BasicField()) |> Flux.gpu
     trainer = Trainer(model, dataset; n_rays=512)
 
+    positions = CUDA.rand(Float32, 3, 512 * 512)
+    directions = CUDA.rand(Float32, 3, 512 * 512)
+
+    @time begin
+        for i in 1:10
+            model(positions, directions)
+        end
+        CUDA.synchronize()
+    end
+
+    @time begin
+        for i in 1:1000
+            model(positions, directions)
+        end
+        CUDA.synchronize()
+    end
+    return
+
+
     # GC.enable_logging(true)
 
     Core.println("Trainer benchmark")

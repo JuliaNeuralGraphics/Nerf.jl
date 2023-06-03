@@ -1,5 +1,5 @@
 # Supported values are: AMD, CUDA.
-const BACKEND_NAME::String = @load_preference("backend", "CUDA")
+const BACKEND_NAME::String = @load_preference("backend", "ROC")
 
 @static if BACKEND_NAME == "AMD"
     using AMDGPU
