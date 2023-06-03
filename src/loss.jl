@@ -5,10 +5,15 @@ function photometric_loss(
     Backend = get_backend(rgba)
     loss = allocate(Backend, Float32, length(bundle))
     ∇rgba = KernelAbstractions.zeros(Backend, Float32, size(rgba))
+
+    background_color = SVector{3, Float32}(0f0, 0f0, 0f0)
+    random_background = true
+
     photometric_loss!(Backend)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.thread_indices, rng_state, bundle.image_indices,
-        bundle.span, samples.deltas, images, UInt32(n_rays);
+        bundle.span, samples.deltas, images, UInt32(n_rays),
+        background_color, random_background;
         ndrange=length(bundle))
     sum(loss), ∇rgba
 end
@@ -35,9 +40,10 @@ Refer to [`RayBundle`](@ref) for documentation on `thread_indices`,
 Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
 """
 @kernel function photometric_loss!(
-    ∇rgba::M, loss::D, @Const(rgba),
-    @Const(thread_indices), rng_state::UInt64, @Const(image_indices),
-    @Const(span), @Const(deltas), images::Images, n_rays::UInt32,
+    ∇rgba::M, loss::D, @Const(rgba), @Const(thread_indices), rng_state::UInt64,
+    @Const(image_indices), @Const(span), @Const(deltas),
+    images::Images, n_rays::UInt32,
+    background_color::SVector{3, Float32}, random_background::Bool,
 ) where {
     M <: AbstractVector{SVector{4, Float32}},
     D <: AbstractVector{Float32},
@@ -49,15 +55,25 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
 
     # Same as in sampler:
     # 3 random numbers per ray: 2 for pixel, 1 for time offset.
-    rng_state = advance(rng_state, (idx - 0x1) * 0x3)
+    rng_state = advance(rng_state, (idx - 0x1) * max_rng_samples_per_ray())
     xy, rng_state = random_vec2f0(rng_state)
+    if random_background
+        background_color, rng_state = random_vec3f0(rng_state)
+    end
 
     @inbounds image_idx = image_indices[i]
     @inbounds ray_span = span[i]
     offset, steps = ray_span[1], ray_span[2]
 
-    composed_rgb, composed_steps = alpha_compose!(nothing, rgba, offset, steps, deltas)
-    target_rgb = sample(images, xy, image_idx)
+    composed_rgb, composed_steps, composed_T =
+        alpha_compose!(nothing, rgba, offset, steps, deltas)
+    target_rgb, target_alpha = sample(images, xy, image_idx)
+    # TODO skip when images are RGB and not RGBA
+    target_rgb = target_rgb .+ (1f0 - target_alpha) .* background_color
+
+    if composed_steps == steps
+        composed_rgb .+= composed_T .* background_color
+    end
 
     diff = composed_rgb .- target_rgb
     ∇loss = 2f0 .* diff
@@ -101,7 +117,7 @@ end
         composed_rgb .+= ω .* rgb
         isnothing(consumer) || consumer(rgb, composed_rgb, ω, δ, σ, T, read_idx)
     end
-    composed_rgb, step
+    composed_rgb, step, T
 end
 
 @inline function to_rgb_a(x)

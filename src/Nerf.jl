@@ -85,6 +85,8 @@ include("marching_tetrahedra/marching_tetrahedra.jl")
 @info "[Nerf.jl] Backend: $BACKEND_NAME"
 @info "[Nerf.jl] Device: $Backend"
 
+# TODO inbounds optimizer
+
 function main()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
