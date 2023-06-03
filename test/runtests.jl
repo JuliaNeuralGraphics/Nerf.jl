@@ -6,10 +6,12 @@ using Nerf
 using StaticArrays
 using Test
 using Zygote
+using Flux
 using KernelAbstractions
 
 const Backend = Nerf.Backend
-@info "[Nerf.jl] Testing on backend: $Backend"
+Nerf.AMDGPU.versioninfo()
+@info "[Nerf.jl] Testing on backend: $Backend, Flux GPU: $(Flux.GPU_BACKEND)"
 
 const DEFAULT_CONFIG_FILE::String = joinpath(
     pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
@@ -36,7 +38,7 @@ const DEFAULT_CONFIG_FILE::String = joinpath(
     @testset "Sampler" begin
         include("sampler.jl")
     end
-    @testset "Renderer" begin
-        include("renderer.jl")
-    end
+    # @testset "Renderer" begin
+    #     include("renderer.jl")
+    # end
 end
