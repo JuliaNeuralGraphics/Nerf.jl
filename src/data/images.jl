@@ -19,6 +19,10 @@ function Images(frame_filepaths::Vector{String})
     Images(data)
 end
 
+width(i::Images) = size(i.data, 2)
+
+height(i::Images) = size(i.data, 3)
+
 function load_image(filename::String; target_size)
     frame = load(filename)
     if target_size ≢ nothing && size(frame) != target_size
