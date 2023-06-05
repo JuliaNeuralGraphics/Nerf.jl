@@ -104,7 +104,6 @@ function render!(
         r.tile_idx = 0
         clear!(r.buffer)
         for tile_id in 1:r.n_tiles
-            reset!(r.bundle)
             render_tile!(
                 consumer, r, occupancy, train_bbox;
                 vertices, normals,
@@ -125,6 +124,8 @@ function render_tile!(
     V <: AbstractVector{SVector{3, Float32}},
     N <: AbstractVector{SVector{3, Float32}},
 }
+    reset!(r.bundle)
+
     if !(isnothing(vertices) && isnothing(normals))
         @assert r.mode == Color
         # TODO adjust
@@ -162,7 +163,7 @@ function init_rays!(r::Renderer, occupancy::OccupancyGrid; near::Float32)
     init_advance!(kab)(
         alive_rays, r.cone, r.bbox, occupancy.binary, n_levels, resolution,
         r.buffer.spp; ndrange=tile_size)
-    return nothing
+    return
 end
 
 function trace(
