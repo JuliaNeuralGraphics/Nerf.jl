@@ -88,14 +88,13 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
 
+        # batch_σ = density(b, @view(points[:, i_start:i_end]), θ)
         batch_σ = _dealloc_density(b, @view(points[:, i_start:i_end]), θ)
         σ[i_start:i_end] .= batch_σ
         unsafe_free!(batch_σ)
     end
     σ
 end
-
-# TODO eager dealloc density function
 
 struct BasicModel{F, P, O <: Adam}
     field::F

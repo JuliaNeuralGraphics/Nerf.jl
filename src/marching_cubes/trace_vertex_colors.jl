@@ -1,6 +1,6 @@
 function trace_vertex_colors(
-    consumer, renderer::Renderer, occupancy::OccupancyGrid, train_bbox::BBox;
-    vertices::V, normals::N,
+    consumer, renderer::Renderer, occupancy::OccupancyGrid,
+    train_bbox::BBox; vertices::V, normals::N,
 ) where {
     V <: AbstractVector{SVector{3, Float32}},
     N <: AbstractVector{SVector{3, Float32}},
@@ -25,28 +25,26 @@ function trace_vertex_colors(
     renderer.mode = old_render_mode
     resize!(renderer, width=old_resolution[1], height=old_resolution[2])
 
-    reinterpret(SVector{3, Float32}, reshape(rgb, length(rgb)))
+    return reinterpret(SVector{3, Float32}, reshape(rgb, length(rgb)))
 end
 
 function init_rays_from_vertices_and_normals!(
     renderer::Renderer, occupancy::OccupancyGrid, vertices, normals,
 )
-    Backend = get_backend(renderer)
-    n_pixels = length(vertices)
-    offset::UInt32 = renderer.tile_idx * renderer.tile_size
-    n_rays = min(renderer.tile_size, min(n_pixels, n_pixels - offset))
-    rays = allocate(Backend, RenderRay, (n_rays,))
+    kab = get_backend(renderer)
+    (; offset, tile_size) = current_tile(renderer)
+    (; alive_rays) = alive(renderer.bundle)
 
-    init_rays_from_vertices_and_normals_kernel!(Backend)(
-        rays, offset, renderer.bbox, vertices, normals;
-        ndrange=n_rays)
+    init_rays_from_vertices_and_normals_kernel!(kab)(
+        alive_rays, UInt32(offset), renderer.bbox, vertices, normals;
+        ndrange=tile_size)
 
     n_levels::UInt32 = get_n_levels(occupancy)
     resolution::UInt32 = get_resolution(occupancy)
-    init_advance!(Backend)(
-        rays, renderer.cone, renderer.bbox,
-        occupancy.binary, n_levels, resolution, UInt32(0); ndrange=n_rays)
-    rays
+    init_advance!(kab)(
+        alive_rays, renderer.cone, renderer.bbox, occupancy.binary,
+        n_levels, resolution, UInt32(0); ndrange=tile_size)
+    return
 end
 
 @kernel function init_rays_from_vertices_and_normals_kernel!(

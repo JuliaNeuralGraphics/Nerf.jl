@@ -80,6 +80,10 @@ struct RaySamples{
     length::UInt32
 end
 
+function Base.sizeof(rs::RaySamples)
+    sizeof(rs.points) + sizeof(rs.directions) + sizeof(rs.deltas)
+end
+
 function Adapt.adapt_structure(to, samples::RaySamples)
     RaySamples(
         adapt(to, samples.points), adapt(to, samples.directions),
@@ -129,7 +133,7 @@ end
     image_idx = image_index(i, n_rays, n_images)
 
     # 3 random numbers per ray: 2 for pixel, 1 for time offset.
-    rng_state = advance(rng_state, (i - 0x1) * 0x3)
+    rng_state = advance(rng_state, (i - 0x1) * max_rng_samples_per_ray())
     xy, rng_state = random_vec2f0(rng_state)
     ξ, rng_state = next_float(rng_state)
 

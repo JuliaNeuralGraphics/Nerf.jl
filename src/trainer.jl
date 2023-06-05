@@ -1,3 +1,6 @@
+# TODO docs
+@inline max_rng_samples_per_ray() = UInt32(16)
+
 mutable struct Trainer{M, D <: Dataset, O <: OccupancyGrid}
     model::M
     dataset::D

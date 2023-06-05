@@ -12,7 +12,11 @@ include("camera_keyframe.jl")
 include("buffer.jl")
 include("utils.jl")
 
-mutable struct Renderer{B <: RenderBuffer}
+mutable struct Renderer{D <: RenderRayBundle, B <: RenderBuffer}
+    bundle::D
+    min_sample_steps::Int
+    max_sample_steps::Int
+
     buffer::B
     camera::Camera
     bbox::BBox
@@ -28,19 +32,28 @@ end
 KernelAbstractions.get_backend(r::Renderer) = get_backend(r.buffer)
 
 function Renderer(
-    Backend, camera::Camera, bbox::BBox, cone::Cone; tile_size::Int = 256 * 256,
+    backend, camera::Camera, bbox::BBox, cone::Cone;
+    tile_size::Int = 256 * 256,
+    min_sample_steps::Int = 1, max_sample_steps::Int = 8,
 )
     width, height = get_resolution(camera)
-    buffer = RenderBuffer(Backend; width, height)
-    n_tiles = ceil(Int, (width * height) / tile_size)
-    Renderer(buffer, camera, bbox, cone, 0, tile_size, n_tiles, Color)
+
+    bundle = RenderRayBundle(backend; n_rays=tile_size, max_sample_steps)
+    buffer = RenderBuffer(backend; width, height)
+
+    n_tiles = cld(width * height, tile_size)
+    Renderer(
+        bundle, min_sample_steps, max_sample_steps,
+        buffer, camera, bbox, cone,
+        0, tile_size, n_tiles, Color)
 end
 
 function resize!(r::Renderer; width::Int, height::Int)
-    set_resolution!(r.camera; width, height)
-    r.buffer = RenderBuffer(get_backend(r); width, height)
-    r.n_tiles = ceil(Int, (width * height) / r.tile_size)
     r.tile_idx = 0
+    r.n_tiles = cld(width * height, r.tile_size)
+    set_resolution!(r.camera; width, height)
+
+    r.buffer = RenderBuffer(get_backend(r); width, height) # TODO free buffer
     return nothing
 end
 
@@ -51,6 +64,7 @@ function reset!(r::Renderer)
 end
 
 function set_dataset!(r::Renderer, dataset::Dataset, cone::Cone, bbox::BBox)
+    # TODO use current resolution, but adopt dataset intrinsics
     set_intrinsics!(r.camera, dataset.intrinsics)
     r.bbox = bbox
     r.cone = cone
@@ -110,73 +124,72 @@ function render_tile!(
     V <: AbstractVector{SVector{3, Float32}},
     N <: AbstractVector{SVector{3, Float32}},
 }
+    reset!(r.bundle)
+
     if !(isnothing(vertices) && isnothing(normals))
         @assert r.mode == Color
+        # TODO adjust
         rays = init_rays_from_vertices_and_normals!(
             r, occupancy, vertices, normals)
     else
-        rays = init_rays(r, occupancy; near)
+        init_rays!(r, occupancy; near)
     end
 
-    n_hit, bundle = trace(
-        consumer, r, rays, occupancy, train_bbox;
+    n_hit = trace(
+        consumer, r, occupancy, train_bbox;
         max_steps, min_transmittance, normals_consumer)
-    if n_hit > 0
-        (; offset, tile_size) = current_tile(r)
-        shade!(get_backend(r.buffer))(
-            r.buffer.buffer, bundle.hit_ids, bundle.hit_rgba,
-            offset, r.mode; ndrange=n_hit)
-        accumulate!(r.buffer; offset, tile_size)
-    end
-    unsafe_free!(bundle)
-    return nothing
+    n_hit == 0 && return
+
+    (; offset, tile_size) = current_tile(r)
+    shade!(get_backend(r.buffer))(
+        r.buffer.buffer, r.bundle.hit_ids, r.bundle.hit_rgba,
+        offset, r.mode; ndrange=n_hit)
+    accumulate!(r.buffer; offset, tile_size)
+    return
 end
 
-function init_rays(r::Renderer, occupancy::OccupancyGrid; near::Float32)
-    Backend = get_backend(r)
+function init_rays!(r::Renderer, occupancy::OccupancyGrid; near::Float32)
+    kab = get_backend(r)
     rotation, translation = split_pose(r.camera)
     (; offset, tile_size) = current_tile(r)
 
-    rays = allocate(Backend, RenderRay, (tile_size,))
-    init_rays!(Backend)(
-        rays, offset, r.bbox, rotation, translation, r.camera.intrinsics,
+    (; alive_rays) = alive(r.bundle)
+    _init_rays!(kab)(
+        alive_rays, offset, r.bbox, rotation, translation, r.camera.intrinsics,
         near, r.buffer.spp; ndrange=tile_size)
 
     n_levels::UInt32 = get_n_levels(occupancy)
     resolution::UInt32 = get_resolution(occupancy)
-    init_advance!(Backend)(
-        rays, r.cone, r.bbox, occupancy.binary, n_levels, resolution,
+    init_advance!(kab)(
+        alive_rays, r.cone, r.bbox, occupancy.binary, n_levels, resolution,
         r.buffer.spp; ndrange=tile_size)
-    rays
+    return
 end
 
 function trace(
-    consumer, r::Renderer, rays::R,
-    occupancy::OccupancyGrid, train_bbox::BBox;
+    consumer, r::Renderer, occupancy::OccupancyGrid, train_bbox::BBox;
     max_steps::Int, min_transmittance::Float32,
     normals_consumer::Union{Nothing, Function} = nothing,
-) where R <: AbstractVector{RenderRay}
-    Backend = get_backend(r)
-    bundle = RenderRayBundle(rays)
+)
+    kab = get_backend(r)
     camera_origin, camera_forward = view_pos(r.camera), view_dir(r.camera)
-    # Min/max number of steps along the ray before recompaction:
-    # alive rays are adjacent.
-    min_sample_steps, max_sample_steps = 1, 8
-    n_alive = n_rays = length(rays)
+    (; tile_size) = current_tile(r)
+    n_alive = n_rays = tile_size
 
     for step in 1:max_steps
-        n_alive = compact!(bundle; n_alive, min_transmittance)
+        n_alive = compact!(r.bundle; n_alive, min_transmittance)
         n_alive == 0 && break
 
-        n_steps = clamp(n_rays ÷ n_alive, min_sample_steps, max_sample_steps)
+        max_samples = clamp(n_rays ÷ n_alive,
+            r.min_sample_steps, r.max_sample_steps)
+        materialize!(
+            r.bundle, occupancy, r.cone;
+            train_bbox, render_bbox=r.bbox, max_samples)
 
-        samples, span = materialize(
-            bundle, occupancy, r.cone;
-            train_bbox, render_bbox=r.bbox, max_samples=n_steps)
-        length(samples) == 0 && continue
+        n_samples = r.bundle.n_samples
+        n_samples == 0 && continue
 
-        raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
-        raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
+        raw_points, raw_directions = raw_samples(r.bundle; n_samples)
         evaluated_rgba = reinterpret(SVector{4, Float32},
             reshape(consumer(raw_points, raw_directions), :))
 
@@ -185,20 +198,18 @@ function trace(
                 reshape(normals_consumer(raw_points), :)) :
             nothing
 
-        (; alive_rays, alive_rgba) = alive(bundle)
-        compose!(Backend)(
-            alive_rgba, span, evaluated_rgba, ∇n,
-            alive_rays, samples, r.mode,
+        (; alive_rays, alive_rgba) = alive(r.bundle)
+        compose!(kab)(
+            alive_rgba, r.bundle.span, evaluated_rgba, ∇n,
+            alive_rays, r.bundle.samples, r.mode,
             camera_origin, camera_forward,
-            r.bbox, min_transmittance, UInt32(n_steps); ndrange=n_alive)
-
-        unsafe_free!.((samples, span))
+            r.bbox, min_transmittance, UInt32(max_samples); ndrange=n_alive)
     end
-    n_hit = Int(Array(bundle.hit_counter)[1])
-    n_hit, bundle
+    n_hit = Int(Array(r.bundle.hit_counter)[1])
+    n_hit
 end
 
-@kernel function init_rays!(
+@kernel function _init_rays!(
     rays::R, offset::UInt32, bbox::BBox,
     rotation::SMatrix{3, 3, Float32, 9}, translation::SVector{3, Float32},
     intrinsics::CameraIntrinsics, near::Float32, spp::UInt32,

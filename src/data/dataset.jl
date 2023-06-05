@@ -5,12 +5,11 @@ struct Dataset{
     I <: Images,
     R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
     T <: AbstractVector{SVector{3, Float32}},
-    C <: CameraIntrinsics,
 }
     images::I
     rotations::R
     translations::T
-    intrinsics::C
+    intrinsics::CameraIntrinsics
 
     frame_filenames::Vector{String}
     rotations_host::Vector{SMatrix{3, 3, Float32, 9}}
