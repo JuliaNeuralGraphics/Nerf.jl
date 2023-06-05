@@ -80,6 +80,10 @@ struct RaySamples{
     length::UInt32
 end
 
+function Base.sizeof(rs::RaySamples)
+    sizeof(rs.points) + sizeof(rs.directions) + sizeof(rs.deltas)
+end
+
 function Adapt.adapt_structure(to, samples::RaySamples)
     RaySamples(
         adapt(to, samples.points), adapt(to, samples.directions),

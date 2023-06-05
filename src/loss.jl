@@ -84,14 +84,12 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
         ω::Float32, δt::Float32, σ::Float32, T::Float32, write_idx::UInt32,
     )
         rgb_diff = composed_rgb .- hcomposed_rgb
-        ∇rgb = ω .* ∇loss .* ∇sigmoid(rgb) .* scale
-        ∇σ = σ * δt * (∇loss ⋅ (T .* rgb .- rgb_diff)) * scale
+        ∇rgb = (scale * ω) .* ∇loss
+        ∇σ = (scale * σ * δt) * (∇loss ⋅ (T .* rgb .- rgb_diff))
         @inbounds ∇rgba[write_idx] = SVector{4, Float32}(∇rgb[1], ∇rgb[2], ∇rgb[3], ∇σ)
     end
     alpha_compose!(consumer, rgba, offset, composed_steps, deltas)
 end
-
-@inline ∇sigmoid(v::SVector{3, Float32}) = v .* (1f0 .- v)
 
 @inline function alpha_compose!(
     consumer, rgba::R, offset::UInt32, steps::UInt32, deltas::D,

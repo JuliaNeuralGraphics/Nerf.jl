@@ -96,6 +96,7 @@ function main()
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
+    @info "Renderer cache: $(Base.format_bytes(sizeof(renderer.bundle)))"
 
     for i in 1:20_000
         loss = step!(trainer)
@@ -135,7 +136,7 @@ function benchmark()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
     model = BasicModel(BasicField(Backend))
-    trainer = Trainer(model, dataset; n_rays=512)
+    trainer = Trainer(model, dataset; n_rays=1024)
 
     # GC.enable_logging(true)
 
@@ -143,8 +144,6 @@ function benchmark()
 
     @time trainer_benchmark(trainer, 10)
     @time trainer_benchmark(trainer, 1000)
-
-    return nothing
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     set_projection!(camera, get_pose(dataset, 1)...)
