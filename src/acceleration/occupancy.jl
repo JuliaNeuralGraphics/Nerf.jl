@@ -6,15 +6,21 @@ mutable struct OccupancyGrid{
     B <: AbstractVector{UInt8},
 }
     density::D
+    tmp_density::D
     binary::B
     mean_density::Float32
 end
 
-function OccupancyGrid(Backend; n_levels::Int, resolution::Int = 128)
+function OccupancyGrid(backend; n_levels::Int, resolution::Int = 128)
     dim_size = ntuple(i -> resolution, Val{3}())
-    density = KernelAbstractions.zeros(Backend, Float32, (dim_size..., n_levels))
-    binary = KernelAbstractions.zeros(Backend, UInt8, length(density) ÷ 8)
-    OccupancyGrid(density, binary, 0f0)
+    density = KernelAbstractions.zeros(backend, Float32, (dim_size..., n_levels))
+    tmp_density = KernelAbstractions.zeros(backend, Float32, size(density))
+    binary = KernelAbstractions.zeros(backend, UInt8, length(density) ÷ 8)
+    OccupancyGrid(density, tmp_density, binary, 0f0)
+end
+
+function Base.sizeof(oc::OccupancyGrid)
+    sizeof(oc.density) + sizeof(oc.tmp_density) + sizeof(oc.binary)
 end
 
 # 0-based level
@@ -73,11 +79,11 @@ function update!(
 
     step ÷= update_frequency
 
-    Backend = get_backend(oc)
-    points = allocate(Backend, SVector{3, Float32}, (n_samples,))
-    indices = allocate(Backend, UInt32, (n_samples,))
+    kab = get_backend(oc)
+    points = allocate(kab, SVector{3, Float32}, (n_samples,))
+    indices = allocate(kab, UInt32, (n_samples,))
 
-    gp_kernel = generate_points!(Backend)
+    gp_kernel = generate_points!(kab)
     gp_kernel(
         points, indices, rng_state, density, bbox,
         -0.01f0, UInt32(step); ndrange=n_uniform)
@@ -94,34 +100,30 @@ function update!(
     log_densities = density_eval_fn(raw_points)
     unsafe_free!(points)
 
-    tmp_density = KernelAbstractions.zeros(Backend, Float32, size(oc.density))
-    distribute_density!(Backend)(
-        reinterpret(UInt32, tmp_density), log_densities,
+    fill!(oc.tmp_density, 0f0)
+    distribute_density!(kab)(
+        reinterpret(UInt32, oc.tmp_density), log_densities,
         indices, cone.min_stepsize; ndrange=length(indices))
     unsafe_free!.((indices, log_densities))
 
-    ema_update!(Backend)(
-        oc.density, tmp_density, decay; ndrange=length(oc.density))
-    unsafe_free!(tmp_density)
-
+    ema_update!(kab)(oc.density, oc.tmp_density, decay; ndrange=length(oc.density))
     update_binary!(oc; threshold)
     return rng_state
 end
 
 function update_binary!(oc::OccupancyGrid; threshold::Float32 = 0.01f0)
-    Backend = get_backend(oc)
+    kab = get_backend(oc)
 
     oc.mean_density = mean(x -> max(0f0, x), @view(oc.density[:, :, :, 1]))
     threshold = min(threshold, oc.mean_density)
-    distribute_to_binary!(Backend)(
-        oc.binary, oc.density, threshold; ndrange=length(oc.binary))
+    distribute_to_binary!(kab)(oc.binary, oc.density, threshold; ndrange=length(oc.binary))
 
     binary_level_length = offset_binary(oc, 1)
     binary_resolution = UInt32(size(oc.density, 1) ÷ 8)
     ndrange = binary_level_length ÷ 8
     n_levels = size(oc.density, 4)
 
-    bmp_kernel = binary_max_pool!(Backend)
+    bmp_kernel = binary_max_pool!(kab)
     for l in 1:(n_levels - 1)
         s, m, e = binary_level_length .* ((l - 1), l, (l + 1))
         prev_level = @view(oc.binary[(s + 1):m])
