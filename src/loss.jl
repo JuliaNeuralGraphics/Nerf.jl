@@ -9,10 +9,12 @@ function photometric_loss(
     background_color = SVector{3, Float32}(0f0, 0f0, 0f0)
     random_background = true
 
+    total_rays::UInt32 = length(bundle.directions)
+
     photometric_loss!(kab)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.thread_indices, rng_state, bundle.image_indices,
-        bundle.span, bundle.samples.deltas, images, UInt32(bundle.n_rays),
+        bundle.span, bundle.samples.deltas, images, total_rays,
         background_color, random_background;
         ndrange=bundle.n_rays)
     sum(loss), ∇rgba
