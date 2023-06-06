@@ -1,29 +1,28 @@
 function photometric_loss(
-    rgba::R; bundle::RayBundle, samples::RaySamples, images::Images,
-    n_rays::Int, rng_state::UInt64,
+    rgba::R; bundle::RayBundle, images::Images, rng_state::UInt64,
 ) where R <: AbstractMatrix{Float32}
-    Backend = get_backend(rgba)
-    loss = allocate(Backend, Float32, length(bundle))
-    ∇rgba = KernelAbstractions.zeros(Backend, Float32, size(rgba))
+    kab = get_backend(rgba)
+    loss = allocate(kab, Float32, bundle.n_rays)
+    ∇rgba = KernelAbstractions.zeros(kab, Float32, size(rgba))
 
+    # TODO allow to configure
     background_color = SVector{3, Float32}(0f0, 0f0, 0f0)
     random_background = true
 
-    photometric_loss!(Backend)(
+    photometric_loss!(kab)(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.thread_indices, rng_state, bundle.image_indices,
-        bundle.span, samples.deltas, images, UInt32(n_rays),
+        bundle.span, bundle.samples.deltas, images, UInt32(bundle.n_rays),
         background_color, random_background;
-        ndrange=length(bundle))
+        ndrange=bundle.n_rays)
     sum(loss), ∇rgba
 end
 
 function ChainRulesCore.rrule(
-    ::typeof(photometric_loss), rgba::R; bundle::RayBundle,
-    samples::RaySamples, images::Images, n_rays::Int, rng_state::UInt64,
+    ::typeof(photometric_loss), rgba::R;
+    bundle::RayBundle, images::Images, rng_state::UInt64,
 ) where R <: AbstractMatrix{Float32}
-    loss, ∇rgba = photometric_loss(
-        rgba; bundle, samples, images, n_rays, rng_state)
+    loss, ∇rgba = photometric_loss(rgba; bundle, images, rng_state)
     photometric_loss_pullback(_) = (NoTangent(), ∇rgba)
     loss, photometric_loss_pullback
 end

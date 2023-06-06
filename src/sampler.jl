@@ -1,74 +1,3 @@
-"""
-TODO
-"""
-struct RayBundle{
-    R <: AbstractVector{SVector{3, Float32}},
-    I <: AbstractVector{UInt32},
-    S <: AbstractVector{SVector{3, UInt32}},
-}
-    directions::R
-    thread_indices::I
-    image_indices::I
-    span::S
-    n_samples::UInt32
-    n_rays::UInt32
-end
-
-function Adapt.adapt_structure(to, bundle::RayBundle)
-    RayBundle(
-        adapt(to, bundle.directions), adapt(to, bundle.thread_indices),
-        adapt(to, bundle.image_indices), adapt(to, bundle.span),
-        bundle.n_samples, bundle.n_rays)
-end
-
-function RayBundle(Backend; n_rays::Int)
-    directions = allocate(Backend, SVector{3, Float32}, n_rays)
-    thread_indices = allocate(Backend, UInt32, n_rays)
-    image_indices = allocate(Backend, UInt32, n_rays)
-    span = allocate(Backend, SVector{3, UInt32}, n_rays)
-    RayBundle(directions, thread_indices, image_indices, span, zero(UInt32), zero(UInt32))
-end
-
-function RayBundle(
-    occupancy::OccupancyGrid, cone::Cone, bbox::BBox,
-    rotations::R, translations::T, intrinsics::CameraIntrinsics;
-    n_rays::Int, rng_state::UInt64,
-) where {
-    R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
-    T <: AbstractVector{SVector{3, Float32}},
-}
-    Backend = get_backend(occupancy)
-    bundle = RayBundle(Backend; n_rays)
-
-    steps_counter = KernelAbstractions.zeros(Backend, UInt32, (1,))
-    rays_counter = KernelAbstractions.zeros(Backend, UInt32, (1,))
-
-    resolution::UInt32 = get_resolution(occupancy)
-    n_levels::UInt32 = get_n_levels(occupancy)
-    generate_ray_bundle!(Backend)(
-        bundle, steps_counter, rays_counter, rng_state,
-        cone, bbox, rotations, translations, intrinsics,
-        occupancy.binary, n_levels, resolution; ndrange=n_rays)
-
-    n_samples::UInt32 = Array(steps_counter)[1]
-    rc::UInt32 = Array(rays_counter)[1]
-    @assert rc > 0
-
-    # Update `n_samples` and `n_rays` fields only.
-    RayBundle(
-        bundle.directions, bundle.thread_indices, bundle.image_indices,
-        bundle.span, n_samples, rc)
-end
-
-Base.length(b::RayBundle) = Int(b.n_rays)
-
-function KernelAbstractions.unsafe_free!(b::RayBundle)
-    unsafe_free!(b.span)
-    unsafe_free!(b.directions)
-    unsafe_free!(b.image_indices)
-    unsafe_free!(b.thread_indices)
-end
-
 struct RaySamples{
     P <: AbstractVector{SVector{3, Float32}},
     D <: AbstractVector{SVector{3, Float32}},
@@ -90,10 +19,10 @@ function Adapt.adapt_structure(to, samples::RaySamples)
         adapt(to, samples.deltas), samples.length)
 end
 
-function RaySamples(Backend; n_samples::Int)
-    points = allocate(Backend, SVector{3, Float32}, n_samples)
-    directions = allocate(Backend, SVector{3, Float32}, n_samples)
-    δ = allocate(Backend, Float32, n_samples)
+function RaySamples(backend; n_samples::Int)
+    points = allocate(backend, SVector{3, Float32}, n_samples)
+    directions = allocate(backend, SVector{3, Float32}, n_samples)
+    δ = allocate(backend, Float32, n_samples)
     RaySamples(points, directions, δ, UInt32(n_samples))
 end
 
@@ -105,23 +34,105 @@ function KernelAbstractions.unsafe_free!(s::RaySamples)
     unsafe_free!(s.deltas)
 end
 
-function materialize(
-    bundle::RayBundle, occupancy::OccupancyGrid,
-    cone::Cone, bbox::BBox, translations::T,
-) where T <: AbstractVector{SVector{3, Float32}}
-    Backend = get_backend(occupancy)
-    samples = RaySamples(Backend; n_samples=Int(bundle.n_samples))
+"""
+TODO
+"""
+Base.@kwdef mutable struct RayBundle{
+    R <: AbstractVector{SVector{3, Float32}},
+    I <: AbstractVector{UInt32},
+    S <: RaySamples,
+    P <: AbstractVector{SVector{3, UInt32}},
+}
+    directions::R
+    n_rays::Int = 0
+
+    thread_indices::I
+    image_indices::I
+
+    samples::S
+    span::P
+    n_samples::Int = 0
+end
+
+function Adapt.adapt_structure(to, bundle::RayBundle)
+    RayBundle(
+        adapt(to, bundle.directions), bundle.n_rays,
+        adapt(to, bundle.thread_indices), adapt(to, bundle.image_indices),
+        adapt(to, bundle.samples), adapt(to, bundle.span), bundle.n_samples)
+end
+
+function Base.sizeof(bundle::RayBundle)
+    sizeof(bundle.samples) + sizeof(bundle.directions) +
+        sizeof(bundle.thread_indices) + sizeof(bundle.image_indices) +
+        sizeof(bundle.span)
+end
+
+function RayBundle(backend; n_rays::Int, n_steps::Int)
+    directions = allocate(backend, SVector{3, Float32}, n_rays)
+    thread_indices = allocate(backend, UInt32, n_rays)
+    image_indices = allocate(backend, UInt32, n_rays)
+    span = allocate(backend, SVector{3, UInt32}, n_rays)
+
+    samples = RaySamples(backend; n_samples=n_rays * n_steps)
+    RayBundle(; directions, thread_indices, image_indices, samples, span)
+end
+
+function raw_samples(bundle::RayBundle)
+    n_samples = bundle.n_samples
+    raw_points = reshape(
+        reinterpret(Float32, @view(bundle.samples.points[1:n_samples])),
+        3, :)
+    raw_directions = reshape(
+        reinterpret(Float32, @view(bundle.samples.directions[1:n_samples])),
+        3, :)
+    return raw_points, raw_directions
+end
+
+function materialize!(
+    bundle::RayBundle, occupancy::OccupancyGrid, cone::Cone, bbox::BBox;
+    intrinsics::CameraIntrinsics, rotations::R, translations::T,
+    rng_state::UInt64,
+) where {
+    R <: AbstractVector{SMatrix{3, 3, Float32, 9}},
+    T <: AbstractVector{SVector{3, Float32}},
+}
+    kab = get_backend(occupancy)
+    steps_counter = KernelAbstractions.zeros(kab, UInt32, (1,))
+    rays_counter = KernelAbstractions.zeros(kab, UInt32, (1,))
 
     resolution::UInt32 = get_resolution(occupancy)
     n_levels::UInt32 = get_n_levels(occupancy)
-    materialize_ray_bundle!(Backend)(
-        samples, bundle, cone, bbox, translations,
-        occupancy.binary, n_levels, resolution; ndrange=length(bundle))
-    samples
+    generate_ray_bundle!(kab)(
+        bundle.thread_indices, bundle.image_indices, bundle.directions, bundle.span,
+        steps_counter, rays_counter, rng_state,
+        cone, bbox, rotations, translations, intrinsics,
+        occupancy.binary, n_levels, resolution; ndrange=length(bundle.directions))
+
+    bundle.n_samples = Array(steps_counter)[1]
+    bundle.n_rays = Array(rays_counter)[1]
+    @assert bundle.n_rays > 0
+    @assert bundle.n_samples > 0
+
+    materialize_ray_bundle!(kab)(
+        bundle.samples, bundle.directions, bundle.image_indices, bundle.span,
+        cone, bbox, translations, occupancy.binary, n_levels, resolution;
+        ndrange=Int(bundle.n_rays))
+    return
+end
+
+function KernelAbstractions.unsafe_free!(b::RayBundle)
+    unsafe_free!(b.samples)
+    unsafe_free!(b.span)
+    unsafe_free!(b.directions)
+    unsafe_free!(b.image_indices)
+    unsafe_free!(b.thread_indices)
 end
 
 @kernel function generate_ray_bundle!(
-    bundle::RayBundle, steps_counter::C, rays_counter::C,
+    # Output args.
+    thread_indices, image_indices, directions, span,
+    steps_counter::C, rays_counter::C,
+    # Read-only args.
     rng_state::UInt64, cone::Cone, bbox::BBox,
     @Const(rotations), @Const(translations), intrinsics::CameraIntrinsics,
     @Const(binary), n_levels::UInt32, resolution::UInt32,
@@ -148,10 +159,10 @@ end
         offset, _ = @atomic steps_counter[0x1] + steps
         _, ray_idx = @atomic rays_counter[0x1] + 0x1
 
-        bundle.thread_indices[ray_idx] = i
-        bundle.image_indices[ray_idx] = image_idx
-        bundle.directions[ray_idx] = ray.direction
-        bundle.span[ray_idx] = SVector{3, UInt32}(
+        thread_indices[ray_idx] = i
+        image_indices[ray_idx] = image_idx
+        directions[ray_idx] = ray.direction
+        span[ray_idx] = SVector{3, UInt32}(
             offset, steps, reinterpret(UInt32, t_start))
     end
 end
@@ -164,17 +175,18 @@ end
     Vector of translations from the dataset.
 """
 @kernel function materialize_ray_bundle!(
-    samples::RaySamples, @Const(bundle),
+    samples::RaySamples,
+    @Const(directions), @Const(image_indices), @Const(span), # TODO types?
     cone::Cone, bbox::BBox, @Const(translations),
     @Const(binary), n_levels::UInt32, resolution::UInt32,
 )
     i::UInt32 = @index(Global)
 
-    @inbounds direction = bundle.directions[i]
-    @inbounds image_idx = bundle.image_indices[i]
-    @inbounds span = bundle.span[i]
+    @inbounds direction = directions[i]
+    @inbounds image_idx = image_indices[i]
+    @inbounds sp = span[i]
 
-    offset, steps, t_start = span[1], span[2], reinterpret(Float32, span[3])
+    offset, steps, t_start = sp[1], sp[2], reinterpret(Float32, sp[3])
     if steps > 0x0
         ray = Ray(translations[image_idx], direction)
 

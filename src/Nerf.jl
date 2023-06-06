@@ -96,6 +96,8 @@ function main()
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
+    @info "Occupancy cache: $(Base.format_bytes(sizeof(trainer.occupancy)))"
+    @info "Trainer cache: $(Base.format_bytes(sizeof(trainer.bundle)))"
     @info "Renderer cache: $(Base.format_bytes(sizeof(renderer.bundle)))"
 
     for i in 1:20_000

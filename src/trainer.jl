@@ -1,13 +1,14 @@
 # TODO docs
 @inline max_rng_samples_per_ray() = UInt32(16)
 
-mutable struct Trainer{M, D <: Dataset, O <: OccupancyGrid}
+mutable struct Trainer{M, D <: Dataset, O <: OccupancyGrid, B <: RayBundle}
     model::M
     dataset::D
     occupancy::O
     bbox::BBox
     cone::Cone
 
+    bundle::B
     step::Int
     n_rays::Int
     occupancy_update_frequency::Int
@@ -23,14 +24,15 @@ function Trainer(
     occupancy_resolution::Int = 128,
     occupancy_decay::Float32 = 0.95f0,
 ) where D <: Dataset
-    Backend = get_backend(model)
-    occupancy = OccupancyGrid(Backend; n_levels, resolution=occupancy_resolution)
+    kab = get_backend(model)
+    occupancy = OccupancyGrid(kab; n_levels, resolution=occupancy_resolution)
     cone = Cone(;
         angle=get_cone_angle(dataset), steps=ray_steps,
         resolution=get_resolution(occupancy), n_levels)
     bbox = get_bbox(dataset, n_levels)
+    bundle = RayBundle(kab; n_rays, n_steps=ray_steps)
     Trainer(
-        model, dataset, occupancy, bbox, cone,
+        model, dataset, occupancy, bbox, cone, bundle,
         0, n_rays, occupancy_update_frequency, occupancy_decay,
         PCG_STATE)
 end
@@ -61,22 +63,15 @@ end
 
 function step!(t::Trainer)
     prepare!(t)
+    materialize!(
+        t.bundle, t.occupancy, t.cone, t.bbox;
+        rotations=t.dataset.rotations, translations= t.dataset.translations,
+        intrinsics=t.dataset.intrinsics, rng_state=t.rng_state)
 
-    bundle = RayBundle(
-        t.occupancy, t.cone, t.bbox, t.dataset.rotations,
-        t.dataset.translations, t.dataset.intrinsics;
-        n_rays=t.n_rays, rng_state=t.rng_state)
-    samples = materialize(
-        bundle, t.occupancy, t.cone, t.bbox, t.dataset.translations)
-
-    raw_points = reshape(reinterpret(Float32, samples.points), 3, :)
-    raw_directions = reshape(reinterpret(Float32, samples.directions), 3, :)
+    raw_points, raw_directions = raw_samples(t.bundle)
     loss = step!(
         t.model, raw_points, raw_directions;
-        bundle, samples, images=t.dataset.images,
-        n_rays=t.n_rays, rng_state=t.rng_state)
-
-    unsafe_free!.((bundle, samples))
+        bundle=t.bundle, images=t.dataset.images, rng_state=t.rng_state)
 
     t.rng_state = advance(t.rng_state)
     t.step += 1

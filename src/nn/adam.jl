@@ -81,15 +81,15 @@ end
     β1::Float32, β2::Float32, ϵ::Float32,
 )
     i = @index(Global)
-    ∇ᵢ = ∇[i]
-    ωᵢ = Θ[i]
+    @inbounds ∇ᵢ = ∇[i]
+    @inbounds ωᵢ = Θ[i]
 
     ∇ᵢ² = ∇ᵢ * ∇ᵢ
-    μᵢ = μ[i] = β1 * μ[i] + (1f0 - β1) * ∇ᵢ
-    νᵢ = ν[i] = β2 * ν[i] + (1f0 - β2) * ∇ᵢ²
+    @inbounds μᵢ = μ[i] = β1 * μ[i] + (1f0 - β1) * ∇ᵢ
+    @inbounds νᵢ = ν[i] = β2 * ν[i] + (1f0 - β2) * ∇ᵢ²
 
     # Debiasing.
     lr *= √(1f0 - β2^current_step) / (1f0 - β1^current_step)
-    Θ[i] = ωᵢ - (lr * μᵢ) / (√νᵢ + ϵ)
+    @inbounds Θ[i] = ωᵢ - (lr * μᵢ) / (√νᵢ + ϵ)
 end
 
