@@ -74,6 +74,7 @@ include("acceleration/occupancy.jl")
 include("encoding/grid.jl")
 include("encoding/spherical_harmonics.jl")
 include("nn/nn.jl")
+include("envmap.jl")
 include("sampler.jl")
 include("loss.jl")
 include("trainer.jl")
@@ -100,7 +101,7 @@ function main()
     @info "Trainer cache: $(Base.format_bytes(sizeof(trainer.bundle)))"
     @info "Renderer cache: $(Base.format_bytes(sizeof(renderer.bundle)))"
 
-    for i in 1:20_000
+    for i in 1:20
         loss = step!(trainer)
         @show i, loss
 
@@ -158,5 +159,8 @@ function benchmark()
 
     nothing
 end
+
+# TODO
+# - use inference view for rendering
 
 end

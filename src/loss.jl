@@ -1,3 +1,5 @@
+# TODO one loss with envmap, one without
+
 function photometric_loss(
     rgba::R; bundle::RayBundle, images::Images, rng_state::UInt64,
 ) where R <: AbstractMatrix{Float32}
@@ -15,7 +17,8 @@ function photometric_loss(
         reinterpret(SVector{4, Float32}, reshape(∇rgba, :)), loss,
         rgba, bundle.thread_indices, rng_state, bundle.image_indices,
         bundle.span, bundle.samples.deltas, images, total_rays,
-        background_color, random_background;
+        background_color, random_background,
+        bundle.directions, nothing, nothing;
         ndrange=bundle.n_rays)
     sum(loss), ∇rgba
 end
@@ -45,6 +48,8 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
     @Const(image_indices), @Const(span), @Const(deltas),
     images::Images, n_rays::UInt32,
     background_color::SVector{3, Float32}, random_background::Bool,
+    # Args for envmap.
+    @Const(directions), envmap, envmap_resolution,
 ) where {
     M <: AbstractVector{SVector{4, Float32}},
     D <: AbstractVector{Float32},
@@ -62,6 +67,12 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
         background_color, rng_state = random_vec3f0(rng_state)
     end
 
+    if !isnothing(envmap)
+        direction = directions[i]
+        ergb, ea = to_rgb_a(read_envmap(envmap, envmap_resolution, direction))
+        background_color = ergb .+ background_color .* (1f0 - ea)
+    end
+
     @inbounds image_idx = image_indices[i]
     @inbounds ray_span = span[i]
     offset, steps = ray_span[1], ray_span[2]
@@ -69,6 +80,7 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
     composed_rgb, composed_steps, composed_T =
         alpha_compose!(nothing, rgba, offset, steps, deltas)
     target_rgb, target_alpha = sample(images, xy, image_idx)
+
     # TODO skip when images are RGB and not RGBA
     target_rgb = target_rgb .+ (1f0 - target_alpha) .* background_color
 

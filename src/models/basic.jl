@@ -139,16 +139,15 @@ end
 
 function step!(
     m::BasicModel, points::P, directions::D;
-    bundle::RayBundle, images::Images, rng_state::UInt64,
+    bundle::RayBundle, envmap, images::Images, rng_state::UInt64,
 ) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
-    loss::Float32 = 0f0
     loss, ∇ = Zygote.withgradient(m.θ) do θ
         rgba = m.field(points, directions, θ)
         photometric_loss(rgba; bundle, images, rng_state)
     end
     step!(m.optimizer, m.θ, ∇[1]; dispose=true)
 
-    loss
+    return loss
 end
