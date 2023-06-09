@@ -89,7 +89,8 @@ include("marching_tetrahedra/marching_tetrahedra.jl")
 # TODO inbounds optimizer
 
 function main()
-    config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
+    # config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
+    config_file = "/home/pxl-th/code/datasets/nerf-datasets/ball/transforms_test.json"
     dataset = Dataset(Backend; config_file)
 
     model = BasicModel(BasicField(Backend))
@@ -101,7 +102,7 @@ function main()
     @info "Trainer cache: $(Base.format_bytes(sizeof(trainer.bundle)))"
     @info "Renderer cache: $(Base.format_bytes(sizeof(renderer.bundle)))"
 
-    for i in 1:20
+    for i in 1:20_000
         loss = step!(trainer)
         @show i, loss
 
@@ -113,6 +114,8 @@ function main()
             model(points, directions)
         end
         save("image-$i.png", RGB.(to_image(renderer.buffer)))
+
+        save("envmap-$i.png", colorview(RGB{Float32}, clamp01!(Array(model.envmap.data))))
     end
     nothing
 end

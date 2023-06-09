@@ -1,18 +1,13 @@
 # TODO docs
 @inline max_rng_samples_per_ray() = UInt32(16)
 
-mutable struct Trainer{
-    M,
-    D <: Dataset, O <: OccupancyGrid,
-    E <: Envmap, B <: RayBundle,
-}
+mutable struct Trainer{M, D <: Dataset, O <: OccupancyGrid, B <: RayBundle}
     model::M
     dataset::D
     occupancy::O
     bbox::BBox
     cone::Cone
 
-    envmap::E
     bundle::B
     step::Int
     n_rays::Int
@@ -35,10 +30,9 @@ function Trainer(
         angle=get_cone_angle(dataset), steps=ray_steps,
         resolution=get_resolution(occupancy), n_levels)
     bbox = get_bbox(dataset, n_levels)
-    envmap = Envmap(kab; width=256, height=256)
     bundle = RayBundle(kab; n_rays, n_steps=ray_steps)
     Trainer(
-        model, dataset, occupancy, bbox, cone, envmap, bundle,
+        model, dataset, occupancy, bbox, cone, bundle,
         0, n_rays, occupancy_update_frequency, occupancy_decay,
         PCG_STATE)
 end

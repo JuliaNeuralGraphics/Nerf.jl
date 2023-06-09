@@ -96,15 +96,23 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
     σ
 end
 
-struct BasicModel{F, P, O <: Adam}
+struct BasicModel{F, P, O <: Adam, E, O2 <: Adam}
     field::F
     θ::P
     optimizer::O
+
+    envmap::E
+    envmap_optimizer::O2
 end
 
 function BasicModel(field::BasicField)
-    θ = init(field)
-    BasicModel(field, θ, Adam(get_backend(field), θ; lr=1f-2))
+    kab = get_backend(field)
+    θ = init(field) # TODO rename to `trainable_params`.
+    optimizer = Adam(kab, θ; lr=1f-2)
+
+    envmap = Envmap(kab; width=256, height=256)
+    envmap_optimizer = Adam(kab, init(envmap); lr=1f-2)
+    BasicModel(field, θ, optimizer, envmap, envmap_optimizer)
 end
 
 KernelAbstractions.get_backend(m::BasicModel) = get_backend(m.field)
@@ -115,6 +123,7 @@ function batched_density(m::BasicModel, points::P; batch::Int) where P <: Abstra
 end
 
 function reset!(m::BasicModel)
+    # TODO envmap
     reset!(m.field, m.θ)
     reset!(m.optimizer)
 end
@@ -139,15 +148,17 @@ end
 
 function step!(
     m::BasicModel, points::P, directions::D;
-    bundle::RayBundle, envmap, images::Images, rng_state::UInt64,
+    bundle::RayBundle, images::Images, rng_state::UInt64,
 ) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
-    loss, ∇ = Zygote.withgradient(m.θ) do θ
+    loss, ∇ = Zygote.withgradient(m.θ, m.envmap) do θ, envmap
         rgba = m.field(points, directions, θ)
-        photometric_loss(rgba; bundle, images, rng_state)
+        photometric_loss(rgba, envmap; bundle, images, rng_state)
     end
     step!(m.optimizer, m.θ, ∇[1]; dispose=true)
+    step!(m.envmap_optimizer, m.envmap.data, ∇[2]; dispose=true)
+    clamp!(m.envmap.data, 0f0, 1f0)
 
     return loss
 end

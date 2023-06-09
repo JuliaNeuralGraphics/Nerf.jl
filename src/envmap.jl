@@ -4,9 +4,11 @@ struct Envmap{D <: AbstractArray{Float32, 3}}
 end
 
 function Envmap(backend; width::Int, height::Int)
-    data = KernelAbstractions.zeros(backend, Float32, (4, width, height))
+    data = KernelAbstractions.ones(backend, Float32, (3, width, height))
     Envmap(data, SVector{2, Int32}(width, height))
 end
+
+init(env::Envmap) = (env.data,)
 
 function direction_to_spherical(d)
     cosθ = min(1f0, max(-1f0, d[3]))
@@ -22,8 +24,12 @@ function direction_to_spherical_norm(d)
     return θ, ϕ
 end
 
-# envmap eltype is SVec{4, Float32}
-function read_envmap(envmap, envmap_resolution::SVector{2, Int32}, direction)
+# TODO @inbounds
+
+# envmap eltype is SVec{3, Float32}
+function read_envmap(
+    envmap, envmap_resolution::SVector{2, Int32}, direction::SVector{3, Float32},
+)
     θ, ϕ = direction_to_spherical_norm(direction)
     ewidth, eheight = envmap_resolution
     envmap_float = (ϕ * (ewidth - Int32(1)), θ * (eheight - Int32(1)))
@@ -48,7 +54,9 @@ function read_envmap(envmap, envmap_resolution::SVector{2, Int32}, direction)
 end
 
 function deposit_envmap_grad!(
-    ∇, Δ::SVector{4, Float32}, envmap_resolution::SVector{2, Int32}, direction,
+    ∇, Δ::SVector{3, Float32},
+    envmap_resolution::SVector{2, Int32},
+    direction::SVector{3, Float32},
 )
     θ, ϕ = direction_to_spherical_norm(direction)
     ewidth, eheight = envmap_resolution
@@ -68,7 +76,7 @@ function deposit_envmap_grad!(
         px += Int32(1)
         py += Int32(1)
 
-        for i in 1:4
+        for i in 1:3 # TODO get n chennels from array
             @atomic ∇[i, px, py] += Δ[i] * ω
         end
     end
