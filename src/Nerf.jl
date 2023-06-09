@@ -114,7 +114,6 @@ function main()
             model(points, directions)
         end
         save("image-$i.png", RGB.(to_image(renderer.buffer)))
-
         save("envmap-$i.png", colorview(RGB{Float32}, clamp01!(Array(model.envmap.data))))
     end
     nothing

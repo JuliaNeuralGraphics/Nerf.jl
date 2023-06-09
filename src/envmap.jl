@@ -4,7 +4,7 @@ struct Envmap{D <: AbstractArray{Float32, 3}}
 end
 
 function Envmap(backend; width::Int, height::Int)
-    data = KernelAbstractions.ones(backend, Float32, (3, width, height))
+    data = KernelAbstractions.zeros(backend, Float32, (3, width, height))
     Envmap(data, SVector{2, Int32}(width, height))
 end
 

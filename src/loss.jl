@@ -80,9 +80,6 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
     rng_state = advance(rng_state, (idx - 0x1) * max_rng_samples_per_ray())
     xy, rng_state = random_vec2f0(rng_state)
     if !isnothing(envmap)
-        # TODO
-        # - do not train alpha channel, just rgb
-        # - in this case background color is mutually exclusive
         background_color = read_envmap(envmap, envmap_resolution, direction)
     elseif random_background
         background_color, rng_state = random_vec3f0(rng_state)
@@ -130,12 +127,12 @@ end
 
 @inline function alpha_compose!(
     consumer, rgba::R, offset::UInt32, steps::UInt32, deltas::D,
-) where {
+)::Tuple{MVector{3, Float32}, UInt32, Float32} where {
     R <: AbstractMatrix{Float32}, D <: AbstractVector{Float32},
 }
     composed_rgb::MVector{3, Float32} = zeros(MVector{3, Float32})
     T::Float32, ϵ::Float32 = 1f0, 1f-4
-    step = zero(UInt32)
+    step::UInt32 = zero(UInt32)
     while step < steps
         T < ϵ && break
         step += 0x1
