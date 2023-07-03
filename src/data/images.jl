@@ -37,14 +37,17 @@ function raw_image(image)
 end
 
 @inline function sample(images::Images, xy::SVector{2, Float32}, image_idx::UInt32)
-    pixel = to_pixel(xy, UInt32(size(images.data, 2)), UInt32(size(images.data, 3)))
-    # TODO inbounds
+    width::UInt32 = unsafe_trunc(UInt32, size(images.data, 2))
+    height::UInt32 = unsafe_trunc(UInt32, size(images.data, 3))
+    pixel = to_pixel(xy, width, height)
+
     scale = 1f0 / 255f0
-    rgb = SVector{3, Float32}(
+    @inbounds rgb = SVector{3, Float32}(
         images.data[1, pixel[1], pixel[2], image_idx],
         images.data[2, pixel[1], pixel[2], image_idx],
         images.data[3, pixel[1], pixel[2], image_idx],
     ) .* scale
+
     # TODO parametrize Images type on the number of channels
     a = if size(images.data, 1) == 4
         Float32(images.data[4, pixel[1], pixel[2], image_idx]) * scale
@@ -56,6 +59,6 @@ end
 
 @inline function to_pixel(xy::SVector{2, Float32}, width::UInt32, height::UInt32)
     resolution = SVector{2, UInt32}(width, height)
-    p = floor.(UInt32, xy .* resolution)
+    p = unsafe_trunc.(UInt32, floor.(xy .* resolution))
     min.(p, resolution .- 0x1) .+ 0x1
 end

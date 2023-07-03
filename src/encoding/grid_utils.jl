@@ -87,7 +87,7 @@ end
         δposition[dim] = x[dim] * scale + 0.5f0
         tmp = floor(δposition[dim])
         δposition[dim] -= tmp
-        grid_position[dim] = UInt32(tmp)
+        grid_position[dim] = unsafe_trunc(UInt32, tmp)
 
         ∇position[dim] = ∇smoothstep(δposition[dim])
         δposition[dim] = smoothstep(δposition[dim])

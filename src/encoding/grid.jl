@@ -85,7 +85,8 @@ function (ge::GridEncoding)(x, θ, ::Val{:IG})
 
     NPD, NFPL = _get_kernel_params(ge)
     grid_kernel!(Backend)(
-        y, ∂y∂x, x, θ, ge.offset_table, NPD, NFPL, ge.base_resolution,
+        y, ∂y∂x, x, θ, ge.offset_table,
+        NPD, NFPL, ge.base_resolution,
         log2(ge.scale); ndrange=(n, ge.n_levels))
     reshape(y, :, n), ∂y∂x
 end

@@ -12,7 +12,7 @@ end
 @inline function point_to_index(
     point::SVector{3, Float32}, resolution::UInt32, level::UInt32,
 )
-    scale = ldexp(1f0, -Int32(level))
+    scale = ldexp(1f0, -unsafe_trunc(Int32, level))
     p = compute_point_inv(point, resolution, scale)
     morton3D(p[1], p[2], p[3])
 end
@@ -27,8 +27,8 @@ end
     point::SVector{3, Float32}, resolution::UInt32, scale::Float32,
 )
     p = (point .- 0.5f0) .* scale .+ 0.5f0
-    i = floor.(Int32, p .* resolution)
-    UInt32.(clamp.(i, UInt32(0), resolution - 0x1))
+    i = unsafe_trunc.(UInt32, floor.(p .* resolution))
+    clamp.(i, UInt32(0), resolution - 0x1)
 end
 
 @inline function get_voxel_radius(resolution::UInt32, level::UInt32)

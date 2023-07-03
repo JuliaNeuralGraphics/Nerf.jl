@@ -54,8 +54,6 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
     i::UInt32 = @index(Global)
     @inbounds idx = thread_indices[i]
 
-    # Same as in sampler:
-    # 3 random numbers per ray: 2 for pixel, 1 for time offset.
     rng_state = advance(rng_state, (idx - 0x1) * max_rng_samples_per_ray())
     xy, rng_state = random_vec2f0(rng_state)
     if random_background
@@ -69,7 +67,6 @@ Refer to [`RaySamples`](@ref) for documentation on `deltas` argument.
     composed_rgb, composed_steps, composed_T =
         alpha_compose!(nothing, rgba, offset, steps, deltas)
     target_rgb, target_alpha = sample(images, xy, image_idx)
-    # TODO skip when images are RGB and not RGBA
     target_rgb = target_rgb .+ (1f0 - target_alpha) .* background_color
 
     if composed_steps == steps

@@ -200,7 +200,7 @@ end
     ξ, rng_state = next_float(rng_state)
     δ, rng_state = random_vec3f0(rng_state)
 
-    level::UInt32 = floor(UInt32, ξ * n_levels) % n_levels
+    level::UInt32 = unsafe_trunc(UInt32, floor(ξ * n_levels)) % n_levels
     level_offset = level_length * level
 
     level_idx = zero(UInt32)

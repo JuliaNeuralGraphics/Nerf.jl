@@ -7,7 +7,7 @@
     hashmap_size::UInt32 = size(θ, 2)
 
     scale = compute_scale(level, log_scale, base_resolution)
-    resolution = ceil(UInt32, scale) + 0x1
+    resolution = unsafe_trunc(UInt32, ceil(scale)) + 0x1
     δposition, grid_position, ∇position = to_grid_position(
         extract_npd(@view(x[:, i]), npd), scale)
 
@@ -18,7 +18,7 @@
         @inbounds y[f, level, i] = result[f]
     end
 
-    # Compute input gradient if needed.
+    # Compute gradient w.r.t. input if needed.
     if !isnothing(∂y∂x)
         grads = encoding_∂y∂x(
             θ, hashmap_size, resolution, scale,
@@ -39,7 +39,7 @@ end
     @inbounds hashmap_size = offset_table[level + 0x1] - offset_start
 
     scale = compute_scale(level, log_scale, base_resolution)
-    grid_resolution = ceil(UInt32, scale) + 0x1
+    grid_resolution = unsafe_trunc(UInt32, ceil(scale)) + 0x1
     δposition, grid_position, _ = to_grid_position(
         extract_npd(@view(x[:, i]), npd), scale)
 
