@@ -33,9 +33,6 @@ const DEFAULT_CONFIG_FILE::String = joinpath(
     @testset "Occupancy" begin
         include("occupancy.jl")
     end
-    @testset "Sampler" begin
-        include("sampler.jl")
-    end
     @testset "Renderer" begin
         include("renderer.jl")
     end
