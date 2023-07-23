@@ -8,5 +8,5 @@ Refer to [NerfGUI.jl](https://github.com/JuliaNeuralGraphics/NerfGUI.jl) for sta
 
 ## Requirements
 
-- Julia 1.8 or higher.
+- Julia 1.9 or higher.
 - AMDGPU or CUDA capable machine.
