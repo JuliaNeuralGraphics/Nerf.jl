@@ -90,7 +90,6 @@ include("marching_tetrahedra/marching_tetrahedra.jl")
 function main()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
-
     model = BasicModel(BasicField(Backend))
     trainer = Trainer(model, dataset; n_rays=1024)
 
