@@ -158,4 +158,13 @@ function benchmark()
     nothing
 end
 
+function sss()
+    ge = GridEncoding(Backend)
+    θ = init(ge)
+
+    x = KernelAbstractions.ones(Backend, Float32, (3, 1))
+    y = ge(x, θ)
+    return
+end
+
 end

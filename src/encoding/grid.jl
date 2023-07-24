@@ -70,9 +70,10 @@ function (ge::GridEncoding)(x, θ)
     n = size(x, 2)
     y = allocate(Backend, Float32, (get_output_shape(ge)..., n))
     NPD, NFPL = _get_kernel_params(ge)
-    grid_kernel!(Backend)(
+    @device_code dir="./devcode-post" grid_kernel!(Backend)(
         y, nothing, x, θ, ge.offset_table, NPD, NFPL,
         ge.base_resolution, log2(ge.scale); ndrange=(n, ge.n_levels))
+    exit()
     reshape(y, :, n)
 end
 

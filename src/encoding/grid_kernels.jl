@@ -2,14 +2,17 @@
     y, ∂y∂x, @Const(x), @Const(grid), @Const(offset_table),
     npd::Val{NPD}, nfpl::Val{NFPL}, base_resolution::UInt32, log_scale::Float32,
 ) where {NPD, NFPL}
-    i::UInt32, level::UInt32 = @index(Global, NTuple)
-    θ = @view(grid[:, (offset_table[level] + 0x1):offset_table[level + 0x1]])
-    hashmap_size::UInt32 = size(θ, 2)
+    i::UInt32, level::UInt32 = let _idx = @index(Global, NTuple)
+        unsafe_trunc(UInt32, _idx[1]), unsafe_trunc(UInt32, _idx[2])
+    end
+    @inbounds θ_start, θ_end = offset_table[level], offset_table[level + 0x1]
+    θ = @inbounds(@view(grid[:, (θ_start + 0x1):θ_end]))
+    hashmap_size::UInt32 = unsafe_trunc(UInt32, size(θ, 2))
 
     scale = compute_scale(level, log_scale, base_resolution)
     resolution = unsafe_trunc(UInt32, ceil(scale)) + 0x1
     δposition, grid_position, ∇position = to_grid_position(
-        extract_npd(@view(x[:, i]), npd), scale)
+        extract_npd(@inbounds(@view(x[:, i])), npd), scale)
 
     result = encode_grid_position(
         θ, hashmap_size, resolution,
