@@ -180,8 +180,7 @@ end
     cone::Cone, bbox::BBox, @Const(translations),
     @Const(binary), n_levels::UInt32, resolution::UInt32,
 )
-    i::UInt32 = @index(Global)
-
+    i = @index(Global)
     @inbounds direction = directions[i]
     @inbounds image_idx = image_indices[i]
     @inbounds sp = span[i]

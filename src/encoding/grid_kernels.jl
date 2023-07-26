@@ -3,12 +3,12 @@
     npd::Val{NPD}, nfpl::Val{NFPL}, base_resolution::UInt32, log_scale::Float32,
 ) where {NPD, NFPL}
     i::UInt32, level::UInt32 = @index(Global, NTuple)
-    θ = @view(grid[:, (offset_table[level] + 0x1):offset_table[level + 0x1]])
-    hashmap_size::UInt32 = size(θ, 2)
+    @inbounds θ = @view(grid[:, (offset_table[level] + 0x1):offset_table[level + 0x1]])
+    hashmap_size::UInt32 = unsafe_trunc(UInt32, size(θ, 2))
 
     scale = compute_scale(level, log_scale, base_resolution)
     resolution = unsafe_trunc(UInt32, ceil(scale)) + 0x1
-    δposition, grid_position, ∇position = to_grid_position(
+    @inbounds δposition, grid_position, ∇position = to_grid_position(
         extract_npd(@view(x[:, i]), npd), scale)
 
     result = encode_grid_position(
@@ -23,8 +23,10 @@
         grads = encoding_∂y∂x(
             θ, hashmap_size, resolution, scale,
             δposition, grid_position, ∇position, npd, nfpl)
-        for f in 1:NFPL, d in 1:NPD
-            @inbounds ∂y∂x[d, f, level, i] = grads[d, f]
+        for f in UnitRange{UInt32}(UInt32(1), UInt32(NFPL))
+            for d in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
+                @inbounds ∂y∂x[d, f, level, i] = grads[d, f]
+            end
         end
     end
 end
@@ -40,7 +42,7 @@ end
 
     scale = compute_scale(level, log_scale, base_resolution)
     grid_resolution = unsafe_trunc(UInt32, ceil(scale)) + 0x1
-    δposition, grid_position, _ = to_grid_position(
+    @inbounds δposition, grid_position, _ = to_grid_position(
         extract_npd(@view(x[:, i]), npd), scale)
 
     s∂L∂y = MVector{NFPL, Float32}(undef)
@@ -76,13 +78,15 @@ end
     i::UInt32 = @index(Global)
     result = zeros(MVector{NPD, Float32})
 
-    for l in 1:L, f in 1:NFPL
-        @inbounds ∂L∂yᵢ = ∂L∂y[f, l, i]
-        for dim in 1:NPD
-            @inbounds result[dim] += ∂L∂yᵢ * ∂y∂x[dim, f, l, i]
+    for l in UnitRange{UInt32}(UInt32(1), UInt32(L))
+        for f in UnitRange{UInt32}(UInt32(1), UInt32(NFPL))
+            @inbounds ∂L∂yᵢ = ∂L∂y[f, l, i]
+            for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
+                @inbounds result[dim] += ∂L∂yᵢ * ∂y∂x[dim, f, l, i]
+            end
         end
     end
-    for dim in 1:NPD
+    for dim in UnitRange{UInt32}(UInt32(1), UInt32(NPD))
         @inbounds ∂L∂x[dim, i] = result[dim]
     end
 end

@@ -166,7 +166,7 @@ end
 @kernel function ema_update!(
     density::D, @Const(tmp_density), decay::Float32,
 ) where D <: AbstractArray{Float32, 4}
-    i::UInt32 = @index(Global)
+    i = @index(Global)
     @inbounds p = density[i]
     @inbounds c = tmp_density[i]
     @inbounds density[i] = ifelse(p < 0f0, p, max(p * decay, c))
@@ -175,7 +175,7 @@ end
 @kernel function distribute_density!(
     density::D, @Const(log_density), @Const(indices), min_cone_stepsize::Float32,
 ) where D <: AbstractArray{UInt32, 4}
-    i::UInt32 = @index(Global)
+    i = @index(Global)
     @inbounds idx = indices[i]
     @inbounds σ = reinterpret(UInt32, exp(log_density[i]) * min_cone_stepsize)
     @inbounds @atomic max(density[idx], σ)

@@ -69,11 +69,17 @@ function (ge::GridEncoding)(x, θ)
     Backend = get_backend(ge)
     n = size(x, 2)
     y = allocate(Backend, Float32, (get_output_shape(ge)..., n))
-    NPD, NFPL = _get_kernel_params(ge)
     grid_kernel!(Backend)(
-        y, nothing, x, θ, ge.offset_table, NPD, NFPL,
+        y, nothing, x, θ, ge.offset_table, _get_kernel_params(ge)...,
         ge.base_resolution, log2(ge.scale); ndrange=(n, ge.n_levels))
     reshape(y, :, n)
+end
+
+function (ge::GridEncoding)(y, x, θ)
+    n = size(x, 2)
+    grid_kernel!(get_backend(ge))(
+        y, nothing, x, θ, ge.offset_table, _get_kernel_params(ge)...,
+        ge.base_resolution, log2(ge.scale); ndrange=(n, ge.n_levels))
 end
 
 function (ge::GridEncoding)(x, θ, ::Val{:IG})
@@ -83,10 +89,9 @@ function (ge::GridEncoding)(x, θ, ::Val{:IG})
     ∂y∂x_shape = Int64.((ge.n_dims, get_output_shape(ge)..., n))
     ∂y∂x = KernelAbstractions.zeros(Backend, Float32, ∂y∂x_shape)
 
-    NPD, NFPL = _get_kernel_params(ge)
     grid_kernel!(Backend)(
         y, ∂y∂x, x, θ, ge.offset_table,
-        NPD, NFPL, ge.base_resolution,
+        _get_kernel_params(ge)..., ge.base_resolution,
         log2(ge.scale); ndrange=(n, ge.n_levels))
     reshape(y, :, n), ∂y∂x
 end
@@ -94,21 +99,19 @@ end
 function ∇(ge::GridEncoding, ∂f∂y, x, θ)
     Backend = get_backend(ge)
     n = size(x, 2)
-    NPD, NFPL = _get_kernel_params(ge)
     ∂grid = KernelAbstractions.zeros(Backend, Float32, size(θ))
     ∇grid_kernel!(Backend)(
-        ∂grid, ∂f∂y, x, ge.offset_table, NPD, NFPL, ge.base_resolution,
-        log2(ge.scale); ndrange=(n, ge.n_levels))
+        ∂grid, ∂f∂y, x, ge.offset_table, _get_kernel_params(ge)...,
+        ge.base_resolution, log2(ge.scale); ndrange=(n, ge.n_levels))
     ∂grid
 end
 
 function ∇grid_input(ge::GridEncoding, ∂L∂y, ∂y∂x)
     Backend = get_backend(ge)
-    n = size(∂y∂x, 4)
-    NPD, NFPL = _get_kernel_params(ge)
-    L = Val{ge.n_levels}()
+    n, L = size(∂y∂x, 4), Val{ge.n_levels}()
     ∂L∂x = allocate(Backend, Float32, Int64.((ge.n_dims, n)))
-    ∇grid_kernel_input!(Backend)(∂L∂x, ∂L∂y, ∂y∂x, NPD, NFPL, L; ndrange=n)
+    ∇grid_kernel_input!(Backend)(
+        ∂L∂x, ∂L∂y, ∂y∂x, _get_kernel_params(ge)..., L; ndrange=n)
     ∂L∂x
 end
 

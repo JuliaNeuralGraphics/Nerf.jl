@@ -261,7 +261,7 @@ end
     # I <: AbstractVector{UInt32},
     # C <: AbstractVector{SVector{4, Float32}},
 }
-    i::UInt32 = @index(Global)
+    i = @index(Global)
     @inbounds idx = hit_ids[i] + offset
     @inbounds rgba = hit_rgba[i]
     if mode == Normals
@@ -285,7 +285,7 @@ end
     N <: Union{Nothing, AbstractVector{SVector{3, Float32}}},
     R <: AbstractVector{RenderRay},
 }
-    i::UInt32 = @index(Global)
+    i = @index(Global)
     @inbounds ray_span = span[i]
     offset, steps, idx = ray_span[1], ray_span[2], ray_span[3]
     @inbounds rray = rays[idx]
