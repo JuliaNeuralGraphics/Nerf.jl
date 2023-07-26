@@ -102,9 +102,9 @@ end
         step += 0x1
         read_idx = offset + step
 
-        rgb, log_σ = to_rgb_a(@view(rgba[:, read_idx]))
+        @inbounds rgb, log_σ = to_rgb_a(@view(rgba[:, read_idx]))
         σ = exp(log_σ)
-        δ = deltas[read_idx]
+        @inbounds δ = deltas[read_idx]
 
         α = 1f0 - exp(-σ * δ)
         ω = α * T

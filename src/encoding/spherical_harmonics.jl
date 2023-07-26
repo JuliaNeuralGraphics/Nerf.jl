@@ -27,7 +27,7 @@ function ChainRulesCore.rrule(::typeof(spherical_harmonics), x)
 end
 
 @kernel function _spherical_harmonics!(encodings, @Const(directions))
-    i::UInt32 = @index(Global)
+    i = @index(Global)
     @inbounds x, y, z = directions[1, i], directions[2, i], directions[3, i]
 
     xy, xz, yz = x * y, x * z, y * z
@@ -54,7 +54,7 @@ end
 end
 
 @kernel function _∇spherical_harmonics!(∂L∂x, @Const(∂L∂y), @Const(directions))
-    i::UInt32 = @index(Global)
+    i = @index(Global)
     @inbounds x, y, z = directions[1, i], directions[2, i], directions[3, i]
 
     xy, xz, yz = x * y, x * z, y * z

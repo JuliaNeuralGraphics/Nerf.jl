@@ -19,7 +19,6 @@ using Zygote
 
 struct Literal{T} end
 Base.:(*)(x, ::Type{Literal{T}}) where {T} = T(x)
-
 const u32 = Literal{UInt32}
 
 include("kautils.jl")
