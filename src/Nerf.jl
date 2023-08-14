@@ -89,8 +89,6 @@ include("marching_tetrahedra/marching_tetrahedra.jl")
 @info "[Nerf.jl] Backend: $BACKEND_NAME"
 @info "[Nerf.jl] Device: $Backend"
 
-# TODO inbounds optimizer
-
 function main()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
@@ -116,49 +114,6 @@ function main()
         end
         save("image-$i.png", RGB.(to_image(renderer.buffer)))
     end
-    nothing
-end
-
-# Benchmark utils.
-
-function trainer_benchmark(trainer::Trainer, n::Int)
-    for i in 1:n
-        Core.println(i)
-        step!(trainer)
-    end
-end
-
-function render_benchmark(renderer::Renderer, trainer::Trainer, n::Int)
-    for i in 1:n
-        Core.println(i)
-        render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-            trainer.model(points, directions)
-        end
-    end
-end
-
-function benchmark()
-    config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
-    dataset = Dataset(Backend; config_file)
-    model = BasicModel(BasicField(Backend))
-    trainer = Trainer(model, dataset; n_rays=1024)
-
-    # GC.enable_logging(true)
-
-    Core.println("Trainer benchmark")
-
-    @time trainer_benchmark(trainer, 10)
-    @time trainer_benchmark(trainer, 1000)
-
-    camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    set_projection!(camera, get_pose(dataset, 1)...)
-    renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
-
-    Core.println("Renderer benchmark")
-
-    @time render_benchmark(renderer, trainer, 2)
-    @time render_benchmark(renderer, trainer, 10)
-
     nothing
 end
 

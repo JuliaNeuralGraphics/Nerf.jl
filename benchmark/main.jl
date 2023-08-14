@@ -27,9 +27,6 @@ function benchmark_spherical_harmonics()
     x = allocate(Backend, Float32, (3, n))
     y = allocate(Backend, Float32, (16, n))
 
-    Nerf.spherical_harmonics!(y, x)
-    return
-
     @info "Spherical harmonics benchmark"
     @btime begin
         Nerf.spherical_harmonics!($y, $x)
@@ -41,7 +38,7 @@ function benchmark_spherical_harmonics()
 end
 
 function main()
-    # benchmark_grid_encoding()
+    benchmark_grid_encoding()
     benchmark_spherical_harmonics()
 end
 main()
