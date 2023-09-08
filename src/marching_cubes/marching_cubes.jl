@@ -1,3 +1,7 @@
+@inline function next_multiple(value::T, divisor) where T
+    ceil(T, value / divisor) * divisor
+end
+
 include("triangle_table.jl")
 include("trace_vertex_colors.jl")
 include("mesh_io.jl")
