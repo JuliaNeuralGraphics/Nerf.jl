@@ -148,3 +148,7 @@ function step!(
 
     loss
 end
+
+safe_norm(x; dims) = sqrt.(sum(abs2, x; dims) .+ eps(Float32))
+
+safe_normalize(x; dims) = x ./ safe_norm(x; dims)
