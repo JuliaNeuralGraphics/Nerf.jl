@@ -36,7 +36,7 @@ end
 
 function _check_mode(mode)
     (mode ≡ nothing || mode == IG) || throw(ArgumentError(
-        "`mode`=`$mode` must be either `Val{:NOIG}()` or `Val{:IG}()`."))
+        "`mode`=`$mode` must be either `nothing` or `NerfUtils.IG`."))
 end
 
 function (b::BasicField)(points::P, directions::D, θ, mode = nothing) where {
@@ -124,7 +124,7 @@ end
 function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
     kab = get_backend(m)
     Y, back = Zygote.pullback(points) do p
-        density(m.field, p, m.θ, Val{:IG}())
+        density(m.field, p, m.θ, IG)
     end
     Δ = KernelAbstractions.ones(kab, Float32, size(Y))
     ∇ = back(Δ)[1]
