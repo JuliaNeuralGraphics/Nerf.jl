@@ -20,7 +20,7 @@ end
 
 KernelAbstractions.get_backend(b::BasicField) = get_backend(b.grid_encoding)
 
-function NerfUtils.init(b::BasicField)
+function init(b::BasicField)
     kab = get_backend(b)
     grid_encoding = NerfUtils.init(b.grid_encoding)
     density_mlp = NerfUtils.init(b.density_mlp, kab)
@@ -28,7 +28,7 @@ function NerfUtils.init(b::BasicField)
     (; grid_encoding, density_mlp, color_mlp)
 end
 
-function NerfUtils.reset!(b::BasicField, θ)
+function reset!(b::BasicField, θ)
     NerfUtils.reset!(b.grid_encoding, θ.grid_encoding)
     NerfUtils.reset!(b.density_mlp, θ.density_mlp)
     NerfUtils.reset!(b.color_mlp, θ.color_mlp)
@@ -99,7 +99,7 @@ struct BasicModel{F, P, O <: Adam}
 end
 
 function BasicModel(field::BasicField)
-    θ = NerfUtils.init(field)
+    θ = init(field)
     BasicModel(field, θ, Adam(get_backend(field), θ; lr=1f-2))
 end
 
