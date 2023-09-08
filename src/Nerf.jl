@@ -10,6 +10,7 @@ using JSON
 using KernelAbstractions
 using KernelAbstractions: @atomic, unsafe_free!
 using LinearAlgebra
+using NerfUtils
 using Preferences
 using Quaternions
 using Rotations
@@ -75,9 +76,7 @@ include("bbox.jl")
 include("data/dataset.jl")
 include("ray.jl")
 include("acceleration/occupancy.jl")
-include("encoding/grid.jl")
 include("encoding/spherical_harmonics.jl")
-include("nn/nn.jl")
 include("sampler.jl")
 include("loss.jl")
 include("trainer.jl")

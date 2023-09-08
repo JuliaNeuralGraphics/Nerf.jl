@@ -4,9 +4,9 @@ struct BasicField{G <: GridEncoding, D, C}
     color_mlp::C
 end
 
-function BasicField(Backend; backbone_size::Int = 16, grid_kwargs...)
-    ge = GridEncoding(Backend; grid_kwargs...)
-    density_mlp_input = prod(get_output_shape(ge))
+function BasicField(kab; backbone_size::Int = 16, grid_kwargs...)
+    ge = GridEncoding(kab; grid_kwargs...)
+    density_mlp_input = prod(NerfUtils.output_size(ge))
     color_mlp_input = 16 + backbone_size # 16 for spherical harmonics
     density_mlp = Chain(
         Dense(density_mlp_input => 64, relu),
@@ -20,58 +20,55 @@ end
 
 KernelAbstractions.get_backend(b::BasicField) = get_backend(b.grid_encoding)
 
-function init(b::BasicField)
-    Backend = get_backend(b)
-    θge = init(b.grid_encoding)
-    θdensity = map(l -> adapt(Backend, l), init(b.density_mlp))
-    θcolor = map(l -> adapt(Backend, l), init(b.color_mlp))
-    (; θge, θdensity, θcolor)
+function NerfUtils.init(b::BasicField)
+    kab = get_backend(b)
+    grid_encoding = NerfUtils.init(b.grid_encoding)
+    density_mlp = NerfUtils.init(b.density_mlp, kab)
+    color_mlp = NerfUtils.init(b.color_mlp, kab)
+    (; grid_encoding, density_mlp, color_mlp)
 end
 
-function reset!(b::BasicField, θ)
-    reset!(b.grid_encoding, θ.θge)
-    reset!(b.density_mlp, θ.θdensity)
-    reset!(b.color_mlp, θ.θcolor)
+function NerfUtils.reset!(b::BasicField, θ)
+    NerfUtils.reset!(b.grid_encoding, θ.grid_encoding)
+    NerfUtils.reset!(b.density_mlp, θ.density_mlp)
+    NerfUtils.reset!(b.color_mlp, θ.color_mlp)
 end
 
 function _check_mode(mode)
-    valid = mode == Val{:NOIG}() || mode == Val{:IG}()
-    valid || throw(ArgumentError(
+    (mode ≡ nothing || mode == IG) || throw(ArgumentError(
         "`mode`=`$mode` must be either `Val{:NOIG}()` or `Val{:IG}()`."))
 end
 
-function (b::BasicField)(points::P, directions::D, θ, mode = Val{:NOIG}()) where {
+function (b::BasicField)(points::P, directions::D, θ, mode = nothing) where {
     P <: AbstractMatrix{Float32}, D <: AbstractMatrix{Float32},
 }
     _check_mode(mode)
-    if mode == Val{:NOIG}()
-        encoded_points = b.grid_encoding(points, θ.θge)
+    encoded_points = if mode ≡ nothing
+        b.grid_encoding(points, θ.grid_encoding)
     else
-        encoded_points = b.grid_encoding(points, θ.θge, mode)
+        b.grid_encoding(points, θ.grid_encoding, IG)
     end
     encoded_directions = spherical_harmonics(directions)
-    backbone = b.density_mlp(encoded_points, θ.θdensity)
-    rgb = b.color_mlp(vcat(backbone, encoded_directions), θ.θcolor)
+    backbone = b.density_mlp(encoded_points, θ.density_mlp)
+    rgb = b.color_mlp(vcat(backbone, encoded_directions), θ.color_mlp)
     vcat(rgb, reshape(backbone[1, :], 1, :))
 end
 
-function density(b::BasicField, points::P, θ, mode = Val{:NOIG}()) where P <: AbstractMatrix{Float32}
+function density(b::BasicField, points::P, θ, mode = nothing) where P <: AbstractMatrix{Float32}
     _check_mode(mode)
-    if mode == Val{:NOIG}()
-        encoded_points = b.grid_encoding(points, θ.θge)
+    encoded_points = if mode ≡ nothing
+        b.grid_encoding(points, θ.grid_encoding)
     else
-        encoded_points = b.grid_encoding(points, θ.θge, mode)
+        b.grid_encoding(points, θ.grid_encoding, IG)
     end
-    b.density_mlp(encoded_points, θ.θdensity)[1, :]
+    b.density_mlp(encoded_points, θ.density_mlp)[1, :]
 end
 
 function _dealloc_density(b::BasicField, points::P, θ) where P <: AbstractMatrix{Float32}
-    Backend = get_backend(b)
-
-    encoded_points = b.grid_encoding(points, θ.θge)
-    tmp = b.density_mlp.layers[1](encoded_points, θ.θdensity[1])
+    encoded_points = b.grid_encoding(points, θ.grid_encoding)
+    tmp = b.density_mlp.layers[1](encoded_points, θ.density_mlp[1])
     unsafe_free!(encoded_points)
-    dst = b.density_mlp.layers[2](tmp, θ.θdensity[2])
+    dst = b.density_mlp.layers[2](tmp, θ.density_mlp[2])
     unsafe_free!(tmp)
     y = dst[1, :]
     unsafe_free!(dst)
@@ -82,8 +79,7 @@ function batched_density(b::BasicField, points::P, θ; batch::Int) where P <: Ab
     n = size(points, 2)
     n_iterations = ceil(Int, n / batch)
 
-    Backend = get_backend(b)
-    σ = allocate(Backend, Float32, (n,))
+    σ = allocate(get_backend(b), Float32, (n,))
     for i in 1:n_iterations
         i_start = (i - 1) * batch + 1
         i_end = min(n, i * batch)
@@ -103,7 +99,7 @@ struct BasicModel{F, P, O <: Adam}
 end
 
 function BasicModel(field::BasicField)
-    θ = init(field)
+    θ = NerfUtils.init(field)
     BasicModel(field, θ, Adam(get_backend(field), θ; lr=1f-2))
 end
 
@@ -115,8 +111,8 @@ function batched_density(m::BasicModel, points::P; batch::Int) where P <: Abstra
 end
 
 function reset!(m::BasicModel)
-    reset!(m.field, m.θ)
-    reset!(m.optimizer)
+    NerfUtils.reset!(m.field, m.θ)
+    NerfUtils.reset!(m.optimizer)
 end
 
 function (m::BasicModel)(points::P, directions::D) where {
@@ -126,11 +122,11 @@ function (m::BasicModel)(points::P, directions::D) where {
 end
 
 function ∇normals(m::BasicModel, points::P) where P <: AbstractMatrix{Float32}
-    Backend = get_backend(m)
+    kab = get_backend(m)
     Y, back = Zygote.pullback(points) do p
         density(m.field, p, m.θ, Val{:IG}())
     end
-    Δ = KernelAbstractions.ones(Backend, Float32, size(Y))
+    Δ = KernelAbstractions.ones(kab, Float32, size(Y))
     ∇ = back(Δ)[1]
     n⃗ = safe_normalize(-∇; dims=1) # TODO in-place normalization kernel with negation
     unsafe_free!.((Δ, ∇))
@@ -148,7 +144,7 @@ function step!(
         rgba = m.field(points, directions, θ)
         photometric_loss(rgba; bundle, images, rng_state)
     end
-    step!(m.optimizer, m.θ, ∇[1]; dispose=true)
+    NerfUtils.step!(m.optimizer, m.θ, ∇[1]; dispose=true)
 
     loss
 end
