@@ -111,7 +111,7 @@ function batched_density(m::BasicModel, points::P; batch::Int) where P <: Abstra
 end
 
 function reset!(m::BasicModel)
-    NerfUtils.reset!(m.field, m.θ)
+    reset!(m.field, m.θ)
     NerfUtils.reset!(m.optimizer)
 end
 
