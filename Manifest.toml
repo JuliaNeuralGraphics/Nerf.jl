@@ -6,7 +6,7 @@ project_hash = "309c42e3ed2637f3bd212e14b1104aadc70e0c85"
 
 [[deps.AMDGPU]]
 deps = ["AbstractFFTs", "Adapt", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLD_jll", "LLVM", "LLVM_jll", "Libdl", "LinearAlgebra", "MacroTools", "Pkg", "Preferences", "Printf", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "TimespanLogging", "UnsafeAtomicsLLVM"]
-path = "/home/pxl-th/.julia/dev/AMDGPU"
+git-tree-sha1 = "9292e8143be89437fe709e68f062a82999736bd8"
 uuid = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 version = "0.5.7"
 
@@ -129,6 +129,20 @@ weakdeps = ["Dates", "LinearAlgebra"]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "1.0.5+1"
+
+[[deps.ConstructionBase]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "c53fc348ca4d40d7b371e71fd52251839080cbc9"
+uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+version = "1.5.4"
+
+    [deps.ConstructionBase.extensions]
+    ConstructionBaseIntervalSetsExt = "IntervalSets"
+    ConstructionBaseStaticArraysExt = "StaticArrays"
+
+    [deps.ConstructionBase.weakdeps]
+    IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.CoordinateTransformations]]
 deps = ["LinearAlgebra", "StaticArrays"]
@@ -465,7 +479,9 @@ version = "1.0.2"
 
 [[deps.NerfUtils]]
 deps = ["Adapt", "ChainRulesCore", "KernelAbstractions", "Random", "StaticArrays"]
-path = "../NerfUtils.jl"
+git-tree-sha1 = "d0a30b34e4f9c3ae581d52c3272656320182b704"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaNeuralGraphics/NerfUtils.jl.git"
 uuid = "99c1d5ce-7c61-4a25-a107-a5ade2e2a8e4"
 version = "0.1.0"
 
@@ -643,9 +659,9 @@ version = "0.1.1"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "StaticArraysCore"]
-git-tree-sha1 = "9cabadf6e7cd2349b6cf49f1915ad2028d65e881"
+git-tree-sha1 = "51621cca8651d9e334a659443a74ce50a3b6dfab"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.6.2"
+version = "1.6.3"
 weakdeps = ["Statistics"]
 
     [deps.StaticArrays.extensions]
@@ -662,10 +678,10 @@ uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 version = "1.9.0"
 
 [[deps.StructArrays]]
-deps = ["Adapt", "DataAPI", "GPUArraysCore", "StaticArraysCore", "Tables"]
-git-tree-sha1 = "521a0e828e98bb69042fec1809c1b5a680eb7389"
+deps = ["Adapt", "ConstructionBase", "DataAPI", "GPUArraysCore", "StaticArraysCore", "Tables"]
+git-tree-sha1 = "0a3db38e4cce3c54fe7a71f831cd7b6194a54213"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
-version = "0.6.15"
+version = "0.6.16"
 
 [[deps.SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
