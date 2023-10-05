@@ -1,4 +1,5 @@
 using Nerf
+using NerfUtils
 using LinearAlgebra
 using StaticArrays
 
@@ -28,18 +29,26 @@ function benchmark()
 
     Core.println("Trainer benchmark")
 
+    GC.gc(true)
+    GC.gc(false)
     @time trainer_benchmark(trainer, 10)
+    GC.gc(true)
+    GC.gc(false)
     @time trainer_benchmark(trainer, 1000)
 
-    camera = Nerf.Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
-    Nerf.set_projection!(camera, Nerf.get_pose(dataset, 1)...)
+    camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
+    NerfUtils.set_projection!(camera, Nerf.get_pose(dataset, 1)...)
     renderer = Nerf.Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
     Core.println("Renderer benchmark")
 
+    GC.gc(true)
+    GC.gc(false)
     @time render_benchmark(renderer, trainer, 2)
+    GC.gc(true)
+    GC.gc(false)
     @time render_benchmark(renderer, trainer, 10)
 
-    nothing
+    return
 end
 benchmark()

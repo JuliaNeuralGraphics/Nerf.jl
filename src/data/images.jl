@@ -50,7 +50,7 @@ end
 
     # TODO parametrize Images type on the number of channels
     a = if size(images.data, 1) == 4
-        Float32(images.data[4, pixel[1], pixel[2], image_idx]) * scale
+        @inbounds Float32(images.data[4, pixel[1], pixel[2], image_idx]) * scale
     else
         1f0
     end

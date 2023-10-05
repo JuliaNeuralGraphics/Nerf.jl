@@ -42,7 +42,7 @@ function reset!(t::Trainer)
     reset!(t.occupancy)
     t.step = 0
     t.rng_state = PCG_STATE
-    return nothing
+    return
 end
 
 function set_dataset!(t::Trainer, dataset::Dataset)
@@ -79,7 +79,7 @@ function step!(t::Trainer)
 end
 
 function prepare!(t::Trainer)
-    t.step % t.occupancy_update_frequency != 0 && return nothing
+    t.step % t.occupancy_update_frequency != 0 && return
 
     if t.step == 0
         mark_invisible_regions!(
@@ -94,5 +94,5 @@ function prepare!(t::Trainer)
     ) do points
         batched_density(t.model, points; batch=512 * 512)
     end
-    return nothing
+    return
 end

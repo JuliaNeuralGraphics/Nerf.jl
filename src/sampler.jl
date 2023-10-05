@@ -103,7 +103,8 @@ function materialize!(
     resolution::UInt32 = get_resolution(occupancy)
     n_levels::UInt32 = get_n_levels(occupancy)
     generate_ray_bundle!(kab)(
-        bundle.thread_indices, bundle.image_indices, bundle.directions, bundle.span,
+        bundle.thread_indices, bundle.image_indices,
+        bundle.directions, bundle.span,
         steps_counter, rays_counter, rng_state,
         cone, bbox, rotations, translations, intrinsics,
         occupancy.binary, n_levels, resolution; ndrange=length(bundle.directions))

@@ -7,8 +7,6 @@
     Stepsize
 end
 
-include("camera.jl")
-include("camera_keyframe.jl")
 include("buffer.jl")
 include("utils.jl")
 
@@ -36,7 +34,7 @@ function Renderer(
     tile_size::Int = 256 * 256,
     min_sample_steps::Int = 1, max_sample_steps::Int = 8,
 )
-    width, height = get_resolution(camera)
+    width, height = NU.get_resolution(camera)
 
     bundle = RenderRayBundle(backend; n_rays=tile_size, max_sample_steps)
     buffer = RenderBuffer(backend; width, height)
@@ -51,7 +49,7 @@ end
 function resize!(r::Renderer; width::Int, height::Int)
     r.tile_idx = 0
     r.n_tiles = cld(width * height, r.tile_size)
-    set_resolution!(r.camera; width, height)
+    NU.set_resolution!(r.camera; width, height)
 
     r.buffer = RenderBuffer(get_backend(r); width, height) # TODO free buffer
     return nothing
@@ -65,7 +63,7 @@ end
 
 function set_dataset!(r::Renderer, dataset::Dataset, cone::Cone, bbox::BBox)
     # TODO use current resolution, but adopt dataset intrinsics
-    set_intrinsics!(r.camera, dataset.intrinsics)
+    NU.set_intrinsics!(r.camera, dataset.intrinsics)
     r.bbox = bbox
     r.cone = cone
     reset!(r)
@@ -83,7 +81,7 @@ is_done(r::Renderer) = r.tile_idx == r.n_tiles
 
 function current_tile(r::Renderer)
     offset::UInt32 = r.tile_idx * r.tile_size
-    width, height = get_resolution(r.camera)
+    width, height = NU.get_resolution(r.camera)
     n_pixels = width * height
     tile_size = min(r.tile_size, min(n_pixels, n_pixels - offset))
     (; offset, tile_size)
@@ -150,7 +148,7 @@ end
 
 function init_rays!(r::Renderer, occupancy::OccupancyGrid; near::Float32)
     kab = get_backend(r)
-    rotation, translation = split_pose(r.camera)
+    rotation, translation = NU.split_pose(r.camera)
     (; offset, tile_size) = current_tile(r)
 
     (; alive_rays) = alive(r.bundle)
@@ -172,7 +170,7 @@ function trace(
     normals_consumer::Union{Nothing, Function} = nothing,
 )
     kab = get_backend(r)
-    camera_origin, camera_forward = view_pos(r.camera), view_dir(r.camera)
+    camera_origin, camera_forward = NU.view_pos(r.camera), NU.view_dir(r.camera)
     (; tile_size) = current_tile(r)
     n_alive = n_rays = tile_size
 

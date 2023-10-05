@@ -18,6 +18,8 @@ using StaticArrays
 using Statistics
 using Zygote
 
+import NerfUtils as NU
+
 struct Literal{T} end
 Base.:(*)(x, ::Type{Literal{T}}) where {T} = T(x)
 const u32 = Literal{UInt32}
@@ -104,10 +106,10 @@ function main()
         loss = step!(trainer)
         @show i, loss
 
-        i % 1000 == 0 || continue
+        i % 500 == 0 || continue
 
         pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
-        set_projection!(camera, get_pose(dataset, pose_idx)...)
+        NU.set_projection!(camera, get_pose(dataset, pose_idx)...)
         render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
             model(points, directions)
         end
