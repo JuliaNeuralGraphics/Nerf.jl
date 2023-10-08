@@ -385,5 +385,5 @@ function get_marching_cubes_resolution(mesh_resolution::Int, render_bbox::BBox)
     δ = diag(render_bbox)
     scale = mesh_resolution / maximum(δ)
     mc_resolution = floor.(Int, δ .* scale .+ 0.5f0)
-    next_multiple.(mc_resolution, 16)
+    NerfUtils.next_multiple.(mc_resolution, 16)
 end

@@ -21,14 +21,8 @@ const DEFAULT_CONFIG_FILE::String = joinpath(
     @testset "Utils" begin
         include("utils.jl")
     end
-    @testset "Grid encoding" begin
-        include("grid_encoding.jl")
-    end
     @testset "Spherical harmonics" begin
         include("spherical_harmonics.jl")
-    end
-    @testset "NN" begin
-        include("nn.jl")
     end
     @testset "Occupancy" begin
         include("occupancy.jl")

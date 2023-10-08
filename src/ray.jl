@@ -6,7 +6,7 @@
     xy =
         (xy .- intrinsics.principal) .*
         intrinsics.resolution ./ intrinsics.focal
-    D && (xy = undistort(xy, intrinsics.distortion);)
+    D == Nothing || (xy = undistort(xy, intrinsics.distortion);)
     direction = normalize(rotation * SVector{3, Float32}(xy[1], xy[2], 1f0))
     Ray(origin, direction)
 end
