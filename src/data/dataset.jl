@@ -101,7 +101,7 @@ end
 
 function get_pose_camera(d::Dataset, view_id::Integer)
     camera = Camera(MMatrix{3, 4, Float32, 12}(I), d.intrinsics)
-    set_projection!(camera, get_pose(d, view_id)...)
+    NU.set_projection!(camera, get_pose(d, view_id)...)
     camera
 end
 
