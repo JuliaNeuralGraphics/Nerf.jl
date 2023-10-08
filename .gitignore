@@ -2,3 +2,4 @@ LocalPreferences.toml
 test/image.png
 *.png
 docs/build/
+Manifest.toml
