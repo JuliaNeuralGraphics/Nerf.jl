@@ -10,7 +10,7 @@ function trace_vertex_colors(
         "number of vertices `$(length(vertices))`.")
 
     old_render_mode = renderer.mode
-    old_resolution = get_resolution(renderer.camera)
+    old_resolution = NU.get_resolution(renderer.camera)
 
     renderer.mode = Color
     resize!(renderer; width=1, height=length(vertices))
