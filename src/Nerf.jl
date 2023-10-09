@@ -87,9 +87,6 @@ include("models/basic.jl")
 include("marching_cubes/marching_cubes.jl")
 include("marching_tetrahedra/marching_tetrahedra.jl")
 
-@info "[Nerf.jl] Backend: $BACKEND_NAME"
-@info "[Nerf.jl] Device: $Backend"
-
 function main()
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
@@ -115,7 +112,7 @@ function main()
         end
         save("image-$i.png", RGB.(to_image(renderer.buffer)))
     end
-    nothing
+    return
 end
 
 end
