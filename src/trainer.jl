@@ -14,6 +14,11 @@ mutable struct Trainer{M, D <: Dataset, O <: OccupancyGrid, B <: RayBundle}
     occupancy_update_frequency::Int
     occupancy_decay::Float32
 
+    lr_start::Float32
+    lr_end::Float32
+    lr_steps::Int
+    lr_scheudler::Function
+
     rng_state::UInt64
 end
 
@@ -23,8 +28,12 @@ function Trainer(
     occupancy_update_frequency::Int = 16,
     occupancy_resolution::Int = 128,
     occupancy_decay::Float32 = 0.95f0,
+    lr_start::Float32 = 1f-2,
+    lr_end::Float32 = 1f-5,
+    lr_steps::Int = 20_000,
 ) where D <: Dataset
     kab = get_backend(model)
+    lr_scheudler = NU.exp_scheduler(lr_start, lr_end, lr_steps)
     occupancy = OccupancyGrid(kab; n_levels, resolution=occupancy_resolution)
     cone = Cone(;
         angle=get_cone_angle(dataset), steps=ray_steps,
@@ -34,12 +43,14 @@ function Trainer(
     Trainer(
         model, dataset, occupancy, bbox, cone, bundle,
         0, n_rays, occupancy_update_frequency, occupancy_decay,
+        lr_start, lr_end, lr_steps, lr_scheudler,
         PCG_STATE)
 end
 
 function reset!(t::Trainer)
     reset!(t.model)
     reset!(t.occupancy)
+    t.lr_scheudler = NU.exp_scheduler(lr_start, lr_end, lr_steps)
     t.step = 0
     t.rng_state = PCG_STATE
     return
@@ -62,6 +73,8 @@ function set_dataset!(t::Trainer, dataset::Dataset)
 end
 
 function step!(t::Trainer)
+    t.model.optimizer.lr = t.lr_scheudler(t.step)
+
     prepare!(t)
     materialize!(
         t.bundle, t.occupancy, t.cone, t.bbox;
