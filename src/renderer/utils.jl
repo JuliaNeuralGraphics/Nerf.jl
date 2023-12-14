@@ -139,8 +139,8 @@ function materialize!(
     kab = get_backend(bundle)
     n_alive = Int(Array(bundle.alive_counter)[1])
 
-    steps_counter = KernelAbstractions.zeros(kab, UInt32, 1)
-    rays_counter = KernelAbstractions.zeros(kab, UInt32, 1)
+    steps_counter = adapt(kab, zeros(UInt32, 1))
+    rays_counter = adapt(kab, zeros(UInt32, 1))
 
     (; alive_rays) = alive(bundle)
     n_levels::UInt32 = get_n_levels(occupancy)

@@ -97,8 +97,8 @@ function materialize!(
     T <: AbstractVector{SVector{3, Float32}},
 }
     kab = get_backend(occupancy)
-    steps_counter = KernelAbstractions.zeros(kab, UInt32, (1,))
-    rays_counter = KernelAbstractions.zeros(kab, UInt32, (1,))
+    steps_counter = adapt(kab, zeros(UInt32, 1))
+    rays_counter = adapt(kab, zeros(UInt32, 1))
 
     resolution::UInt32 = get_resolution(occupancy)
     n_levels::UInt32 = get_n_levels(occupancy)

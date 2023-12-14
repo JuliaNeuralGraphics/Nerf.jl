@@ -165,8 +165,8 @@ function marching_cubes(
         "but is instead $(size(log_densities))")
 
     Backend = get_backend(log_densities)
-    counters = KernelAbstractions.zeros(Backend, UInt32, 2)
-    generation_counters = KernelAbstractions.zeros(Backend, UInt32, 2)
+    counters = adapt(Backend, zeros(UInt32, 2))
+    generation_counters = adapt(Backend, zeros(UInt32, 2))
     vertex_grid = allocate(Backend, Int32, (3, ndrange...))
     fill!(vertex_grid, Int32(-1))
 
