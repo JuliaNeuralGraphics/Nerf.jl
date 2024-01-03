@@ -4,9 +4,9 @@ mutable struct RenderBuffer{B <: AbstractMatrix{SVector{4, Float32}}}
     spp::UInt32
 end
 
-function RenderBuffer(Backend; width::Int, height::Int)
-    buffer = allocate(Backend, SVector{4, Float32}, (width, height))
-    accumulator = allocate(Backend, SVector{4, Float32}, (width, height))
+function RenderBuffer(kab; width::Int, height::Int)
+    buffer = allocate(kab, SVector{4, Float32}, (width, height))
+    accumulator = allocate(kab, SVector{4, Float32}, (width, height))
     fill!(reinterpret(Float32, buffer), 0f0)
     fill!(reinterpret(Float32, accumulator), 0f0)
     RenderBuffer(buffer, accumulator, UInt32(0))
@@ -29,7 +29,7 @@ end
 function accumulate!(b::RenderBuffer; offset::UInt32, tile_size::Int)
     accumulate_kernel!(get_backend(b))(
         b.accumulator, b.buffer, offset, Float32(b.spp); ndrange=tile_size)
-    return nothing
+    return
 end
 
 @kernel function accumulate_kernel!(

@@ -224,9 +224,9 @@ end
 function mark_invisible_regions!(
     oc::OccupancyGrid; intrinsics, rotations, translations,
 )
-    Backend = get_backend(oc)
+    kab = get_backend(oc)
     res_scale = 0.5f0 .* intrinsics.resolution ./ intrinsics.focal
-    _mark_invisible_regions!(Backend)(
+    _mark_invisible_regions!(kab)(
         oc.density, rotations, translations, res_scale;
         ndrange=length(oc.density))
 end

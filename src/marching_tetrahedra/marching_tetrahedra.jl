@@ -11,18 +11,18 @@ function marching_tetrahedra(
     consumer, renderer::Renderer, train_bbox::BBox;
     threshold::Float32, subdivide::Integer = 1,
 )
-    Backend = get_backend(renderer)
+    kab = get_backend(renderer)
 
     grid_vertices_host, grid_indices_host = _get_tetrahedra_grid()
-    grid_vertices = adapt(Backend, grid_vertices_host)
-    grid_indices = adapt(Backend, grid_indices_host)
+    grid_vertices = adapt(kab, grid_vertices_host)
+    grid_indices = adapt(kab, grid_indices_host)
     for _ in 1:subdivide
         grid_vertices, grid_indices = subdivide_tetrahedra(
             grid_vertices, nothing; indices=grid_indices)
     end
 
-    positions = allocate(Backend, SVector{3, Float32}, size(grid_vertices, 2))
-    generate_mt_grid_samples!(Backend)(
+    positions = allocate(kab, SVector{3, Float32}, size(grid_vertices, 2))
+    generate_mt_grid_samples!(kab)(
         positions, reinterpret(SVector{3, Float32}, grid_vertices),
         renderer.bbox, train_bbox; ndrange=length(positions))
 
@@ -33,7 +33,7 @@ function marching_tetrahedra(
         grid_vertices, densities; indices=grid_indices)
     vertices = reinterpret(SVector{3, Float32}, reshape(raw_vertices, :))
     # Transform vertices global CS.
-    mt_to_global_cs!(Backend)(
+    mt_to_global_cs!(kab)(
         vertices, renderer.bbox; ndrange=length(vertices))
 
     indices = reshape(raw_indices, :)

@@ -77,7 +77,7 @@ function marching_tetrahedra(vertices::V, field; indices) where V
 end
 
 function _mt_prep(indices::I, field) where I
-    Backend = get_backend(indices)
+    kab = get_backend(indices)
 
     occupied = field .> 0f0
     sampled_occupancy = occupied[indices]
@@ -92,11 +92,11 @@ function _mt_prep(indices::I, field) where I
     """)
 
     all_edges = reshape(valid_indices[TET_BASE_EDGES, :], 2, :)
-    _sort_edges!(Backend)(all_edges; ndrange=size(all_edges, 2))
+    _sort_edges!(kab)(all_edges; ndrange=size(all_edges, 2))
 
     # Select only unique edges.
     all_edges_raw = reshape(reinterpret(UInt64, all_edges), :)
-    unique_edges_raw, idx_map = _unique(all_edges_raw; Backend)
+    unique_edges_raw, idx_map = _unique(all_edges_raw; kab)
     unique_edges = reshape(reinterpret(UInt32, unique_edges_raw), 2, :)
 
     # Select edges that cross the boundary, using `occupancy`.
@@ -104,26 +104,26 @@ function _mt_prep(indices::I, field) where I
         reshape(occupied[reshape(unique_edges, :)], 2, :); dims=1) .== 1, :)
     interpolation_vertices = reshape(unique_edges[:, mask_edges], :)
 
-    mapping = allocate(Backend, Int32, (size(unique_edges, 2),))
+    mapping = allocate(kab, Int32, (size(unique_edges, 2),))
     fill!(mapping, Int32(-1))
-    mapping[mask_edges] .= adapt(Backend, 1:sum(mask_edges))
+    mapping[mask_edges] .= adapt(kab, 1:sum(mask_edges))
     idx_map = reshape(mapping[idx_map], 6, :)
 
     tets_indices = reshape(sum(
-        sampled_occupancy[:, valid_tets] .* adapt(Backend, TET_VERTEX_IDS);
+        sampled_occupancy[:, valid_tets] .* adapt(kab, TET_VERTEX_IDS);
         dims=1), :) .+ 0x1 # + 1 index shift
-    n_triangles_table = adapt(Backend, TETS_N_TRIANGLES)[tets_indices]
-    triangle_table = adapt(Backend, TET_TRIANGLE_TABLE)
+    n_triangles_table = adapt(kab, TETS_N_TRIANGLES)[tets_indices]
+    triangle_table = adapt(kab, TET_TRIANGLE_TABLE)
 
-    faces = allocate(Backend, UInt32, (3, 0))
-    fc_kernel = _face_constructor(Backend)
+    faces = allocate(kab, UInt32, (3, 0))
+    fc_kernel = _face_constructor(kab)
     for (n_triangles, n_vertices) in ((1, 3), (2, 6))
         mask = n_triangles_table .== n_triangles
         indices = idx_map[:, mask]
         if !isempty(indices)
             triangles = triangle_table[1:n_vertices, tets_indices[mask]]
             ndrange = size(indices, 2)
-            faces_tmp = allocate(Backend, UInt32, (n_vertices, ndrange))
+            faces_tmp = allocate(kab, UInt32, (n_vertices, ndrange))
             fc_kernel(faces_tmp, indices, triangles; ndrange)
             faces = hcat(faces, reshape(faces_tmp, 3, :))
         end
@@ -163,7 +163,7 @@ function comparator(a::Tuple, b::Tuple)
     comparator(a[1], b[1])
 end
 
-function _unique(x; Backend)
+function _unique(x; kab)
     perm = Array(sortperm(x; lt=comparator))
     inv_perm = invperm(perm)
     x_sorted = x[perm]
@@ -171,12 +171,12 @@ function _unique(x; Backend)
     # NOTE
     #   we `fill` just to fill the last element
     #   which is not covered by the kernel.
-    non_equal_ids = allocate(Backend, UInt32, (length(x_sorted) + 1,))
+    non_equal_ids = allocate(kab, UInt32, (length(x_sorted) + 1,))
     fill!(non_equal_ids, UInt32(length(x_sorted) + 1))
-    # non_equal_ids = fill(Backend, UInt32(length(x_sorted) + 1), (length(x_sorted) + 1,))
-    mask = allocate(Backend, Bool, (length(non_equal_ids),))
+    # non_equal_ids = fill(kab, UInt32(length(x_sorted) + 1), (length(x_sorted) + 1,))
+    mask = allocate(kab, Bool, (length(non_equal_ids),))
     fill!(mask, true)
-    _non_equal_adjacent_elements(Backend)(
+    _non_equal_adjacent_elements(kab)(
         non_equal_ids, mask, x_sorted; ndrange=length(x_sorted))
 
     non_equal_ids = non_equal_ids[mask]
@@ -184,10 +184,10 @@ function _unique(x; Backend)
 
     x_unique = x_sorted[@view(non_equal_ids[1:end - 1])]
 
-    reverse_ids = allocate(Backend, UInt32, length(x_sorted))
+    reverse_ids = allocate(kab, UInt32, length(x_sorted))
     deltas = @view(non_equal_ids[2:end]) .- @view(non_equal_ids[1:end - 1])
     offsets = cumsum(deltas)
-    _reverse_unique(Backend)(
+    _reverse_unique(kab)(
         reverse_ids, offsets, deltas; ndrange=length(x_unique))
 
     x_unique, reverse_ids[inv_perm]

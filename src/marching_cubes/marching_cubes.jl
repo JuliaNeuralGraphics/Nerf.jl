@@ -41,8 +41,8 @@ function marching_cubes(
     mc_resolution = get_marching_cubes_resolution(
         mesh_resolution, renderer.bbox)
 
-    Backend, ndrange = get_backend(renderer), tuple(mc_resolution...)
-    positions = allocate(Backend, Float32, (3, ndrange...))
+    kab, ndrange = get_backend(renderer), tuple(mc_resolution...)
+    positions = allocate(kab, Float32, (3, ndrange...))
     generate_grid_samples_uniform!(
         positions, mc_resolution, train_bbox, renderer.bbox)
 
@@ -72,9 +72,9 @@ function mesh_1_ring(vertices::V, indices::I) where {
 
     n_vertices, n_triangles = length(vertices), length(indices) ÷ 3
 
-    Backend = get_backend(vertices)
-    normals = KernelAbstractions.zeros(Backend, Float32, (3, n_vertices))
-    accumulate_1_ring!(Backend)(normals, vertices, indices; ndrange=n_triangles)
+    kab = get_backend(vertices)
+    normals = KernelAbstractions.zeros(kab, Float32, (3, n_vertices))
+    accumulate_1_ring!(kab)(normals, vertices, indices; ndrange=n_triangles)
     # TODO return normalized :/ normals
     reinterpret(SVector{3, Float32}, reshape(normals, length(normals)))
 end
@@ -164,18 +164,18 @@ function marching_cubes(
         "Size of `log_densities` must be equal to `mc_resolution`, " *
         "but is instead $(size(log_densities))")
 
-    Backend = get_backend(log_densities)
-    counters = adapt(Backend, zeros(UInt32, 2))
-    generation_counters = adapt(Backend, zeros(UInt32, 2))
-    vertex_grid = allocate(Backend, Int32, (3, ndrange...))
+    kab = get_backend(log_densities)
+    counters = adapt(kab, zeros(UInt32, 2))
+    generation_counters = adapt(kab, zeros(UInt32, 2))
+    vertex_grid = allocate(kab, Int32, (3, ndrange...))
     fill!(vertex_grid, Int32(-1))
 
-    count_and_generate_vertices!(Backend)(
+    count_and_generate_vertices!(kab)(
         nothing, nothing, counters, log_densities, threshold,
         render_bbox, UInt32.(mc_resolution); ndrange)
 
-    triangle_table = adapt(Backend, TRIANGLE_TABLE)
-    count_and_generate_faces!(Backend)(
+    triangle_table = adapt(kab, TRIANGLE_TABLE)
+    count_and_generate_faces!(kab)(
         nothing, counters, nothing, triangle_table,
         log_densities, threshold; ndrange=ndrange .- 1)
 
@@ -189,13 +189,13 @@ function marching_cubes(
     n_vertices, n_indices = host_counters
     @assert n_indices % 3 == 0
 
-    vertices = KernelAbstractions.zeros(Backend, SVector{3, Float32}, n_vertices)
-    count_and_generate_vertices!(Backend)(
+    vertices = KernelAbstractions.zeros(kab, SVector{3, Float32}, n_vertices)
+    count_and_generate_vertices!(kab)(
         vertex_grid, vertices, generation_counters, log_densities, threshold,
         render_bbox, UInt32.(mc_resolution); ndrange)
 
-    indices = allocate(Backend, UInt32, n_indices)
-    count_and_generate_faces!(Backend)(
+    indices = allocate(kab, UInt32, n_indices)
+    count_and_generate_faces!(kab)(
         indices, generation_counters, vertex_grid, triangle_table,
         log_densities, threshold; ndrange=ndrange .- 1)
 
@@ -352,11 +352,11 @@ function generate_grid_samples_uniform!(
     render_bbox ∈ train_bbox || error(
         "`render_bbox` $render_bbox must be inside `train_bbox` $train_bbox.")
 
-    Backend = get_backend(positions)
-    generate_grid_samples_uniform_kernel!(Backend)(
+    kab = get_backend(positions)
+    generate_grid_samples_uniform_kernel!(kab)(
         positions, UInt32.(mc_resolution),
         render_bbox, train_bbox; ndrange)
-    return nothing
+    return
 end
 
 @kernel function generate_grid_samples_uniform_kernel!(
