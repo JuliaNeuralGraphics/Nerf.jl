@@ -1,7 +1,7 @@
 function is_valid_backend(name::String)
     (name == "AMDGPU" || name == "CUDA") && return name
     error("""
-    Invalid `backend` specified: $BACKEND_NAME.
+    Invalid `backend` specified: $name.
     Supported values are: AMDGPU, CUDA.
     """)
 end
