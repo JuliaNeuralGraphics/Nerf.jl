@@ -118,11 +118,14 @@ end
 using PrecompileTools
 
 @setup_workload let
-    # TODO: KA.functional(Backend)
     config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
     dataset = Dataset(Backend; config_file)
     model = BasicModel(BasicField(Backend))
-    trainer = Trainer(model, dataset; n_rays=4)
+
+    trainer = Trainer(model, dataset; n_rays=128)
+    for _ in 1:20 # 20 step, since different steps run different kernels, to cover them all
+        step!(trainer)
+    end
 
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)

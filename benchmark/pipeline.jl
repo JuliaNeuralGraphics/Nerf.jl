@@ -7,14 +7,12 @@ const Backend = Nerf.Backend
 
 function trainer_benchmark(trainer::Nerf.Trainer, n::Int)
     for i in 1:n
-        Core.println(i)
         Nerf.step!(trainer)
     end
 end
 
 function render_benchmark(renderer::Nerf.Renderer, trainer::Nerf.Trainer, n::Int)
     for i in 1:n
-        Core.println(i)
         Nerf.render!(trainer.model, renderer, trainer.occupancy, trainer.bbox)
     end
 end
