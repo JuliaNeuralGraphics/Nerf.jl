@@ -123,18 +123,19 @@ using PrecompileTools
     model = BasicModel(BasicField(Backend))
 
     trainer = Trainer(model, dataset; n_rays=128)
-    for _ in 1:20 # 20 step, since different steps run different kernels, to cover them all
-        step!(trainer)
-    end
-
     camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
     renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
 
-    loss = step!(trainer)
     pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
     NU.set_projection!(camera, get_pose(dataset, pose_idx)...)
-    render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
-        model(points, directions)
+
+    @compile_workload begin
+        for _ in 1:20
+            step!(trainer)
+        end
+        render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
+            model(points, directions)
+        end
     end
 end
 
