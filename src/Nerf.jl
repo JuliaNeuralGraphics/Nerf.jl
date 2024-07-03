@@ -115,4 +115,28 @@ function main()
     return
 end
 
+using PrecompileTools
+
+@setup_workload let
+    config_file = joinpath(pkgdir(Nerf), "data", "raccoon_sofa2", "transforms.json")
+    dataset = Dataset(Backend; config_file)
+    model = BasicModel(BasicField(Backend))
+
+    trainer = Trainer(model, dataset; n_rays=128)
+    camera = Camera(MMatrix{3, 4, Float32}(I), dataset.intrinsics)
+    renderer = Renderer(Backend, camera, trainer.bbox, trainer.cone)
+
+    pose_idx = clamp(round(Int, rand() * length(dataset)), 1, length(dataset))
+    NU.set_projection!(camera, get_pose(dataset, pose_idx)...)
+
+    @compile_workload begin
+        for _ in 1:20
+            step!(trainer)
+        end
+        render!(renderer, trainer.occupancy, trainer.bbox) do points, directions
+            model(points, directions)
+        end
+    end
+end
+
 end

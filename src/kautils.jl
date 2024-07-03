@@ -6,7 +6,7 @@ function is_valid_backend(name::String)
     """)
 end
 
-backend_name() = is_valid_backend(@load_preference("backend", "AMDGPU"))
+backend_name() = is_valid_backend(@load_preference("backend", "CUDA"))
 
 function set_backend!(name::String)::Bool
     backend_name() == name && return false
